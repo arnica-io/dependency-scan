@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+    outputs:
+      new_tag: ${{ steps.tagger.outputs.new_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -82,17 +83,27 @@ jobs:
           git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
 
-          git pull origin "$WORK_BRANCH" || true
-
+  create-pr:
+    needs: tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: Create PR for README update (assign reviewer)
-        if: steps.tagger.outputs.new_tag
+        if: needs.tag.outputs.new_tag
         continue-on-error: true
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.8.0
         with:
-          branch: docs/readme-${{ steps.tagger.outputs.new_tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: docs/readme-${{ needs.tag.outputs.new_tag }}
           base: ${{ github.event.repository.default_branch }}
-          title: "docs: update README usage to ${{ steps.tagger.outputs.new_tag }}"
-          body: "Automated README update for ${{ steps.tagger.outputs.new_tag }}"
+          title: "docs: update README usage to ${{ needs.tag.outputs.new_tag }}"
+          body: "Automated README update for ${{ needs.tag.outputs.new_tag }}"
           reviewers: ofirshtrull
           labels: documentation
           draft: false
