@@ -86,7 +86,6 @@ Security scan results appear in multiple locations:
 ### Environment variables
 
 - **ARNICA_API_TOKEN**: Alternative to the `api-token` input. Recommended to pass via `${{ secrets.ARNICA_API_TOKEN }}`.
-- **CDXGEN_VERSION**: Version of @cyclonedx/cdxgen to install (default: `11.3.2`).
 
 ### Permissions
 
