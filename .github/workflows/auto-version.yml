@@ -82,6 +82,8 @@ jobs:
           git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
 
+          git pull origin "$WORK_BRANCH" || true
+
       - name: Create PR for README update (assign reviewer)
         if: steps.tagger.outputs.new_tag
         continue-on-error: true
