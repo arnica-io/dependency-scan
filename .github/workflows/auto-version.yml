@@ -67,14 +67,14 @@ jobs:
           set -x
           git fetch origin "${DEFAULT_BRANCH}:${DEFAULT_BRANCH}" || true
           git checkout "${DEFAULT_BRANCH}" || git checkout -B "${DEFAULT_BRANCH}" "origin/${DEFAULT_BRANCH}"
-          echo "Before update lines:"; grep -nE 'uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true
-          BEFORE_COUNT=$(grep -cE 'uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true)
+          echo "Before update lines:"; grep -nE '^[[:space:]]*uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true
+          BEFORE_COUNT=$(grep -cE '^[[:space:]]*uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true)
           if [ -f README.md ]; then
-            sed -i.bak -E "s|(uses:[[:space:]]*[^[:space:]]+/dependency-scan@)[^[:space:]]+|\1${TAG_NAME}|g" README.md
+            sed -i.bak -E "s|(^[[:space:]]*uses:[[:space:]]*[A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+|\1${TAG_NAME}|g" README.md
             rm -f README.md.bak
           fi
-          echo "After update lines:"; grep -nE 'uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true
-          AFTER_COUNT=$(grep -cE 'uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true)
+          echo "After update lines:"; grep -nE '^[[:space:]]*uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true
+          AFTER_COUNT=$(grep -cE '^[[:space:]]*uses:[[:space:]]*[^[:space:]]+/dependency-scan@[^[:space:]]+' README.md || true)
           git --no-pager diff -- README.md | cat
           if [ "${BEFORE_COUNT:-0}" -eq 0 ]; then
             echo "No usage lines found; skipping."
