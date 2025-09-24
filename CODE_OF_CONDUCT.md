@@ -21,5 +21,3 @@ We are committed to a welcoming and inclusive community. Please be respectful an
 - Maintainers may take action including warnings or removing contributions that violate this policy.
 
 Adapted from the Contributor Covenant.
-
-

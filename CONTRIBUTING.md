@@ -41,5 +41,3 @@ Thanks for your interest in contributing! This repository hosts a GitHub Action 
 ### Code of Conduct
 
 By participating, you agree to abide by the `CODE_OF_CONDUCT.md`.
-
-
