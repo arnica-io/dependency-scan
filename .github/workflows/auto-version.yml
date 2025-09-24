@@ -1,0 +1,51 @@
+name: Auto Version on Main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Bump version and push tag
+        id: tagger
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: v
+          release_branches: main
+          default_bump: patch
+          create_annotated_tag: true
+          dry_run: false
+
+      - name: Create GitHub Release
+        if: steps.tagger.outputs.new_tag
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.0
+        with:
+          tag_name: ${{ steps.tagger.outputs.new_tag }}
+          generate_release_notes: true
+
+      - name: Update major tag (e.g., v1)
+        if: steps.tagger.outputs.new_tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG_NAME="${{ steps.tagger.outputs.new_tag }}"
+          MAJOR_TAG=$(echo "$TAG_NAME" | sed -E 's/^v([0-9]+).*/v\1/')
+          echo "Updating $MAJOR_TAG to point to $TAG_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$MAJOR_TAG" --force
+
+      # Release creation and major tag update handled directly in this workflow
