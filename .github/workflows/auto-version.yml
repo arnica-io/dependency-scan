@@ -108,6 +108,7 @@ jobs:
     if: needs.tag.outputs.changed == 'true'
     steps:
       - name: Create PR via API (no branch mutation)
+        continue-on-error: true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -134,5 +135,9 @@ jobs:
             fi
             echo "PR: $HTML"
           else
-            echo "Could not create/find PR"; echo "$RESP" | head -200
+            URL="https://github.com/${REPO}/compare/${DEFAULT_BRANCH}...${WORK_BRANCH}?expand=1"
+            echo "Could not create/find PR automatically. Open manually: $URL"
+            echo "$RESP" | head -200 || true
+            # Do not fail the job in policy-restricted environments
+            exit 0
           fi
