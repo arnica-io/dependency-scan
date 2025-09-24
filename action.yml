@@ -1,0 +1,423 @@
+name: Dependency Security Scan
+description: Scan a repository for dependencies and vulnerabilities
+branding:
+  icon: upload-cloud
+  color: blue
+inputs:
+  repository-url:
+    description: Repository URL associated with the scan
+    required: true
+  branch:
+    description: Branch name associated with the scan
+    required: false
+    default: main
+  scan-path:
+    description: Repository path to associate with the scan
+    required: true
+  api-base-url:
+    description: Arnica API base URL (e.g., https://api.app.arnica.io)
+    required: true
+    default: https://api.app.arnica.io
+  scan-timeout-seconds:
+    description: Maximum time to wait for scan completion in seconds
+    required: false
+    default: "900"
+  api-token:
+    description: Arnica API token (prefer passing via secrets)
+    required: false
+  on-findings:
+    description: Behavior when findings are detected (Failure). One of fail|alert|pass
+    required: false
+    default: fail
+  cdxgen-version:
+    description: Version of @cyclonedx/cdxgen to install
+    required: false
+    default: "11.3.2"
+  debug:
+    description: Enable verbose API response debug logs
+    required: false
+    default: "false"
+outputs:
+  scan-id:
+    description: Arnica scan identifier
+    value: ${{ steps.arnica.outputs.scan_id }}
+  status:
+    description: Final scan status (Success, Failure, Error, Skipped, Timeout)
+    value: ${{ steps.arnica.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - name: Install node
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+
+    - name: Install cdxgen
+      shell: bash
+      run: npm install -g @cyclonedx/cdxgen@${{ inputs.cdxgen-version }}
+
+    - name: Create SBOM
+      shell: bash
+      env:
+        DEBUG: ${{ inputs.debug }}
+      run: |
+        # Creating SBOM in the scan-path
+        cd ${{ inputs.scan-path }}
+        if [ "${DEBUG:-false}" = "true" ]; then
+          cdxgen .
+          cat bom.json |jq  '.metadata.tools.components[0]'
+        else
+          cdxgen . >/dev/null 2>&1
+        fi
+
+    - name: Ensure jq is installed
+      shell: bash
+      run: |
+        # Ensure jq is installed
+        set -euo pipefail
+        if ! command -v jq >/dev/null 2>&1; then
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          else
+            echo "jq not found and apt-get is unavailable on this runner. Please install jq."
+            exit 1
+          fi
+        fi
+
+    - name: Upload SBOM to Arnica and wait for scan
+      id: arnica
+      shell: bash
+      env:
+        REPO: ${{ inputs.repository-url }}
+        BRANCH: ${{ inputs.branch }}
+        SBOM: ${{ inputs.scan-path }}/bom.json
+        SCAN_PATH: ${{ inputs.scan-path }}
+        API: ${{ inputs.api-base-url }}
+        SCAN_TIMEOUT_SECONDS: ${{ inputs.scan-timeout-seconds }}
+        API_TOKEN_INPUT: ${{ inputs.api-token }}
+        ON_FINDINGS: ${{ inputs.on-findings }}
+        DEBUG: ${{ inputs.debug }}
+      run: |
+        # Upload SBOM to Arnica and wait for scan
+        set -euo pipefail
+
+        if [ -z "${REPO:-}" ] || [ -z "${BRANCH:-}" ] || [ -z "${SBOM:-}" ] || [ -z "${SCAN_PATH:-}" ]; then
+          echo "Missing required inputs."
+          exit 1
+        fi
+
+        if [ -z "${API:-}" ]; then
+          echo "API endpoint is not defined. Provide input 'api-base-url'."
+          exit 1
+        fi
+
+        # Expect SBOM file at the provided path (typically ./bom.json)
+        if [ ! -f "$SBOM" ]; then
+          echo "SBOM file not found: $SBOM"
+          exit 1
+        fi
+
+        if [ -n "${API_TOKEN_INPUT:-}" ]; then
+          TOKEN="$API_TOKEN_INPUT"
+        elif [ -n "${ARNICA_API_TOKEN:-}" ]; then
+          TOKEN="$ARNICA_API_TOKEN"
+        else
+          echo "Error: API token is missing. Pass env ARNICA_API_TOKEN from a secret."
+          exit 1
+        fi
+
+        SCAN_TIMEOUT="${SCAN_TIMEOUT_SECONDS:-900}"
+
+        echo "Starting SBOM scan..."
+        # Normalize API path to start with '/'
+        case "$SCAN_PATH" in
+          /*) API_PATH="$SCAN_PATH" ;;
+          "") API_PATH="/" ;;
+          *) API_PATH="/$SCAN_PATH" ;;
+        esac
+
+        REQUEST_BODY=$(jq -n \
+          --arg repo "$REPO" \
+          --arg branch "$BRANCH" \
+          --arg path "$API_PATH" \
+          '{repositoryUrl: $repo, branch: $branch, path: $path}')
+
+        RESULT=$(curl -Ss -X 'POST' \
+          "${API}/v1/sbom/scan/upload" \
+          -H 'accept: application/json' \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H 'Content-Type: application/json' \
+          -d "$REQUEST_BODY")
+
+        STATUS=$(echo "$RESULT" | jq -r .statusCode)
+        if [ "$STATUS" != "null" ] && [ "$STATUS" -ne 200 ]; then
+          MESSAGE=$(echo "$RESULT" | jq -r .message)
+          echo "API Error Response:"
+          echo "Status Code: $STATUS"
+          echo "Message: $MESSAGE"
+          echo "Full Response:"
+          echo "$RESULT" | jq '.' 2>/dev/null || echo "$RESULT"
+
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## Arnica Dependency Security Scan"
+              echo ""
+              echo "❌ Scan Failed to Execute for branch \`$BRANCH\` at path \`$API_PATH\` (Scan ID: \`n/a\`).${MESSAGE:+ Error: $MESSAGE}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "status=Error" >> "$GITHUB_OUTPUT"
+          echo "Start SBOM scan failed with status code $STATUS, message: $MESSAGE"
+          exit 1
+        fi
+
+        SCANID=$(echo "$RESULT" | jq -r .scanId)
+        URL=$(echo "$RESULT" | jq -r .uploadUrl)
+
+        if [ -z "$SCANID" ] || [ -z "$URL" ] || [ "$SCANID" = "null" ] || [ "$URL" = "null" ]; then
+          echo "Failed to obtain scanId or uploadUrl from API response: $RESULT"
+          exit 1
+        fi
+
+        echo "scanId=$SCANID"
+        echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
+        echo "Uploading SBOM..."
+
+        curl -H "Content-Type: application/json" -Ss -X PUT --data-binary @"$SBOM" "$URL"
+        echo "Upload completed."
+
+        START_TIME=$(date +%s)
+        echo "Waiting for scan completion (timeout: ${SCAN_TIMEOUT}s)..."
+
+        while true; do
+          CURRENT_TIME=$(date +%s)
+          ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+
+          if [ "$ELAPSED_TIME" -ge "$SCAN_TIMEOUT" ]; then
+            echo "status=Timeout" >> "$GITHUB_OUTPUT"
+            echo "Scan did not complete within the timeout."
+            exit 1
+          fi
+
+          RESPONSE=$(curl -sS -X GET \
+            "${API}/v1/sbom/scan/${SCANID}/status" \
+            -H "accept: application/json" \
+            -H "Authorization: Bearer ${TOKEN}")
+
+          if [ "${DEBUG:-false}" = "true" ]; then
+            echo "=== FULL API RESPONSE DEBUG ==="
+            echo "$RESPONSE" | jq '.' 2>/dev/null || echo "Raw response: $RESPONSE"
+            echo "=== END DEBUG ==="
+          fi
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
+          REASON=$(echo "$RESPONSE" | jq -r '.reason // empty')
+          ERRORS_JSON=$(echo "$RESPONSE" | jq -c '.errors // []')
+
+          write_summary() {
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              {
+                echo "## Arnica Dependency Security Scan"
+                echo ""
+                # Emoji and verb mapping for scan status
+                case "$STATUS" in
+                  Success) EMOJI="✅"; VERB="Succeeded" ;;
+                  Failure) EMOJI="❌"; VERB="Failed" ;;
+                  Error) EMOJI="❌"; VERB="Failed to Execute" ;;
+                  Skipped) EMOJI="⏭️"; VERB="Skipped" ;;
+                  Timeout) EMOJI="⏳"; VERB="Timed Out" ;;
+                  *) EMOJI="ℹ️"; VERB="$STATUS" ;;
+                esac
+
+                SENTENCE="$EMOJI Scan $VERB for branch \`$BRANCH\` at path \`$API_PATH\` (Scan ID: \`$SCANID\`)."
+
+                TOTAL=$(echo "$RESPONSE" | jq -r '.findingsSummary.total // 0')
+
+                # Success with no findings: short celebratory message
+                if [ "$STATUS" = "Success" ] && { [ -z "$TOTAL" ] || [ "$TOTAL" = "0" ]; }; then
+                  echo "$SENTENCE Woot Woot!"
+                  echo ""
+                else
+                  echo "$SENTENCE"
+                  echo ""
+                fi
+
+                # Inline errors when execution failed
+                if [ "$STATUS" = "Error" ]; then
+                  ERR_COUNT=$(echo "$ERRORS_JSON" | jq -r 'length // 0')
+                  if [ "$ERR_COUNT" -gt 0 ]; then
+                    echo "### Errors"
+                    echo ""
+                    echo "$ERRORS_JSON" | jq -r '.[] | tostring | "- " + .'
+                    echo ""
+                  elif [ -n "$REASON" ] && [ "$REASON" != "null" ]; then
+                    echo "### Errors"
+                    echo ""
+                    echo "- $REASON"
+                    echo ""
+                  fi
+                fi
+
+                # Findings summary and details (omit when zero)
+                if [ -n "$TOTAL" ] && [ "$TOTAL" != "null" ] && [ "$TOTAL" -ne 0 ]; then
+                  FINDINGS_JSON=$(echo "$RESPONSE" | jq -c '.findingsSummary.findings // []')
+
+                  # Build lifecycle matrix per severity (exclude info)
+                  echo "### Findings Summary"
+                  echo ""
+                  echo "| Severity | New | Existing | Resolved | Total |"
+                  echo "|----------|-----|----------|----------|-------|"
+
+                  SUM_NEW=0
+                  SUM_EXISTING=0
+                  SUM_RESOLVED=0
+
+                  for severity in critical high medium low; do
+                    NEW_C=$(echo "$FINDINGS_JSON" | jq -r --arg sev "$severity" '[.[] | select(.severity == $sev and .lifecycle == "introduced")] | length')
+                    RESOLVED_C=$(echo "$FINDINGS_JSON" | jq -r --arg sev "$severity" '[.[] | select(.severity == $sev and .lifecycle == "resolved")] | length')
+                    EXISTING_C=$(echo "$FINDINGS_JSON" | jq -r --arg sev "$severity" '[.[] | select(.severity == $sev and (.lifecycle != "introduced" and .lifecycle != "resolved"))] | length')
+                    TOTAL_C=$((NEW_C + EXISTING_C + RESOLVED_C))
+
+                    case $severity in
+                      critical) LABEL="🔴 Critical" ;;
+                      high) LABEL="🟠 High" ;;
+                      medium) LABEL="🟡 Medium" ;;
+                      low) LABEL="🔵 Low" ;;
+                    esac
+
+                    echo "| $LABEL | $NEW_C | $EXISTING_C | $RESOLVED_C | $TOTAL_C |"
+
+                    SUM_NEW=$((SUM_NEW + NEW_C))
+                    SUM_EXISTING=$((SUM_EXISTING + EXISTING_C))
+                    SUM_RESOLVED=$((SUM_RESOLVED + RESOLVED_C))
+                  done
+
+                  echo "| **Total** | **$SUM_NEW** | **$SUM_EXISTING** | **$SUM_RESOLVED** | **$TOTAL** |"
+
+                  # Details per severity as tables, filter out dismissed/resolved statuses
+                  for severity in critical high medium low; do
+                    SEVERITY_COUNT=$(echo "$FINDINGS_JSON" | jq -r --arg sev "$severity" '[.[] | select(.severity == $sev) | select(((.status // "") | ascii_downcase) != "dismissed" and ((.status // "") | ascii_downcase) != "resolved")] | length')
+                    if [ "$SEVERITY_COUNT" -gt 0 ]; then
+                      case $severity in
+                        critical) echo ""; echo "### 🔴 Critical Findings ($SEVERITY_COUNT)" ;;
+                        high) echo ""; echo "### 🟠 High Findings ($SEVERITY_COUNT)" ;;
+                        medium) echo ""; echo "### 🟡 Medium Findings ($SEVERITY_COUNT)" ;;
+                        low) echo ""; echo "### 🔵 Low Findings ($SEVERITY_COUNT)" ;;
+                      esac
+                      echo ""
+                      echo "| Status | Package | Finding Type | Recommendation |"
+                      echo "|--------|---------|--------------|----------------|"
+                      echo "$FINDINGS_JSON" | jq -r --arg sev "$severity" '
+                        [.[]
+                          | select(.severity == $sev)
+                          | select((((.status // "") | ascii_downcase) | test("^(dismiss|resolved)")) | not)
+                          | {
+                              status: (
+                                if (.status // "") == "requires_review" then "Requires Review"
+                                elif (.status // "") == "pending_review" then "Pending Review"
+                                elif (.status // "") == "in_progress" then "In Progress"
+                                elif (.status // "") == "awaiting_user_input" then "Awaiting User Input"
+                                elif (.status // "") == "mitigation_in_progress" then "Mitigation In Progress"
+                                elif (.status // "") == "mitigation_pending_pr" then "Mitigation Pending PR"
+                                elif (.status // "") == "mitigation_failed" then "Mitigation Failed"
+                                elif (.status // "") == "already_confirmed" then "Already Confirmed"
+                                elif (.status // "") == "anomaly_detected" then "Anomaly Detected"
+                                elif (.status // "") == "flagged" then "Flagged"
+                                elif (.status // "") == "notified_in_integration" then "Notified in Integration"
+                                elif (.status // "") == "re_detected_in_new_branch" then "Re-detected in New Branch"
+                                elif (.status // "") == "sent_interactive_message_in_integration" then "Sent Interactive Message in Integration"
+                                elif (.status // "") == "notification_sent" then "Notification Sent"
+                                elif (.status // "") == "risk_accepted" then "Risk Accepted"
+                                # Dismissed/Resolved variants intentionally filtered out above
+                                else (.status // "N/A") end
+                              ),
+                              lifecycle: (if (.lifecycle // "") == "introduced" then "New" elif (.lifecycle // "") == "resolved" then "Resolved" else "Existing" end),
+                              pkg: (
+                                (
+                                  ( .packageName // .package // .component.name // ((.title // "") | (try (capture("^(?<pkg>(@[^@\\s]+/[^@\\s]+)|[^@\\s]+)@").pkg) catch empty)) ) as $name
+                                  | ( .packageVersion // .version // .component.version // ((.title // "") | (try (capture("^(@[^@\\s]+/[^@\\s]+|[^@\\s]+)@(?<ver>[^\\s]+)").ver) catch empty)) ) as $ver
+                                  | if ($name // "") == "" then "N/A" else (if ($ver // "") != "" then ($name + "@" + $ver) else $name end) end
+                                )
+                              ),
+                              ftype: (if (.type // "") == "sca" then "SCA" elif (.type // "") == "license" then "License" elif (.type // "") == "reputation" then "Reputation" else (.type // "N/A") end),
+                              rec: (if ((.recommendations // []) | length) > 0 then (.recommendations | map(tostring) | join(" | ")) elif (.recommendation // "") != "" then .recommendation else "No specific fix available" end)
+                            }
+                        ]
+                        | .[]
+                        | "| " + (.status + " (" + .lifecycle + ")") + " | " + .pkg + " | " + .ftype + " | " + (.rec | gsub("\n"; " ")) + " |"'
+                      echo ""
+                    fi
+                  done
+                fi
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          if [ "$STATUS" = "Failure" ]; then
+            echo "One or more policy violations found."
+            echo "status=Failure" >> "$GITHUB_OUTPUT"
+
+            # Best-effort: fetch findings if not yet populated
+            ATTEMPTS=0
+            FINDINGS_COUNT=$(echo "$RESPONSE" | jq -r '(.findingsSummary.findings // []) | length')
+            while [ "${FINDINGS_COUNT:-0}" -eq 0 ] && [ $ATTEMPTS -lt 5 ]; do
+              sleep 2
+              RESPONSE=$(curl -sS -X GET \
+                "${API}/v1/sbom/scan/${SCANID}/status" \
+                -H "accept: application/json" \
+                -H "Authorization: Bearer ${TOKEN}")
+              STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
+              FINDINGS_COUNT=$(echo "$RESPONSE" | jq -r '(.findingsSummary.findings // []) | length')
+              ATTEMPTS=$((ATTEMPTS+1))
+            done
+
+            # Console summary for quick visibility
+            TOTAL=$(echo "$RESPONSE" | jq -r '.findingsSummary.total // 0')
+            if [ -n "$TOTAL" ] && [ "$TOTAL" != "null" ] && [ "$TOTAL" -ne 0 ]; then
+              CRITICAL=$(echo "$RESPONSE" | jq -r '.findingsSummary.critical // 0')
+              HIGH=$(echo "$RESPONSE" | jq -r '.findingsSummary.high // 0')
+              MEDIUM=$(echo "$RESPONSE" | jq -r '.findingsSummary.medium // 0')
+              LOW=$(echo "$RESPONSE" | jq -r '.findingsSummary.low // 0')
+              echo "Findings summary: total=$TOTAL critical=$CRITICAL high=$HIGH medium=$MEDIUM low=$LOW"
+              CONSOLE_FINDINGS=$(echo "$RESPONSE" | jq -r '(.findingsSummary.findings // []) | length')
+              if [ "$CONSOLE_FINDINGS" -gt 0 ]; then
+                echo "Top findings:"
+                echo "$RESPONSE" | jq -r '(.findingsSummary.findings // [])[0:10][] | [.severity, .type, .title, .status, (.recommendation // "N/A")] | @tsv' 2>/dev/null \
+                  | awk -F '\t' '{printf "- [%s] %s (%s) status=%s\n  Recommendation: %s\n", $1, $3, $2, $4, $5}' || echo "Error parsing findings for console output"
+              else
+                echo "No detailed findings available yet (findings may still be processing)"
+              fi
+            fi
+
+            write_summary
+            case "${ON_FINDINGS:-fail}" in
+              alert|pass) exit 0 ;;
+              *) exit 1 ;;
+            esac
+          fi
+
+          if [ "$STATUS" = "Error" ]; then
+            echo "Errors encountered during SBOM scan."
+            echo "status=Error" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 1
+          fi
+
+          if [ "$STATUS" = "Skipped" ]; then
+            echo "Scan skipped."
+            echo "status=Skipped" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 0
+          fi
+
+          if [ "$STATUS" = "Success" ]; then
+            echo "Scan completed successfully."
+            echo "status=Success" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 0
+          fi
+
+          sleep 10
+        done
+
+        # This should never be reached due to timeout check above
+        echo "status=Timeout" >> "$GITHUB_OUTPUT"
+        echo "Unexpected timeout condition."
+        exit 1
