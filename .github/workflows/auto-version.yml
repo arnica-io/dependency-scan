@@ -99,45 +99,22 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "work_branch=$WORK_BRANCH" >> "$GITHUB_OUTPUT"
 
-  create-pr:
-    needs: tag
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    if: needs.tag.outputs.changed == 'true'
-    steps:
-      - name: Create PR via API (no branch mutation)
-        continue-on-error: true
+      - name: Post PR link in summary
+        if: steps.prepare.outputs.changed == 'true'
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          TAG_NAME: ${{ needs.tag.outputs.new_tag }}
-          WORK_BRANCH: ${{ needs.tag.outputs.work_branch }}
+          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+          WORK_BRANCH: ${{ steps.prepare.outputs.work_branch }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          api() { curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" -H 'Accept: application/vnd.github+json' "$@"; }
-          DATA=$(printf '{"title":"docs: update README usage to %s","head":"%s","base":"%s","body":"Automated README update for %s"}' "$TAG_NAME" "$WORK_BRANCH" "$DEFAULT_BRANCH" "$TAG_NAME")
-          RESP=$(api -X POST -d "$DATA" "https://api.github.com/repos/${REPO}/pulls" || true)
-          NUM=$(echo "$RESP" | grep -o '"number":[0-9]*' | head -1 | sed 's/[^0-9]//g')
-          HTML=$(echo "$RESP" | grep -o '"html_url":"[^"]*"' | head -1 | sed 's/"html_url":"\(.*\)"/\1/')
-          if [ -z "$NUM" ]; then
-            RESP=$(api "https://api.github.com/repos/${REPO}/pulls?head=${REPO%%/*}:$WORK_BRANCH&state=open")
-            NUM=$(echo "$RESP" | grep -o '"number":[0-9]*' | head -1 | sed 's/[^0-9]//g')
-            HTML=$(echo "$RESP" | grep -o '"html_url":"[^"]*"' | head -1 | sed 's/"html_url":"\(.*\)"/\1/')
-          fi
-          if [ -n "$NUM" ]; then
-            api -X POST -d '{"reviewers":["ofirshtrull"]}' "https://api.github.com/repos/${REPO}/pulls/${NUM}/requested_reviewers" || true
-            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-              { echo "## README update PR"; echo "$HTML"; } >> "$GITHUB_STEP_SUMMARY"
-            fi
-            echo "PR: $HTML"
+          URL="https://github.com/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${WORK_BRANCH}?expand=1"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## README update ready"
+              echo "Branch: \`${WORK_BRANCH}\`"
+              echo "Open PR: ${URL}"
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            URL="https://github.com/${REPO}/compare/${DEFAULT_BRANCH}...${WORK_BRANCH}?expand=1"
-            echo "Could not create/find PR automatically. Open manually: $URL"
-            echo "$RESP" | head -200 || true
-            # Do not fail the job in policy-restricted environments
-            exit 0
+            echo "Open PR: ${URL}"
           fi
