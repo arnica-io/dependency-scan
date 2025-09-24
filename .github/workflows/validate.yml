@@ -1,0 +1,34 @@
+name: Validate Action and Workflows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: actionlint
+        uses: reviewdog/action-actionlint@93dc1f9bc10856298b6cc1a3b3239cfbbb87fe4b # v1.67.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-check
+          level: warning
+
+      - name: Basic sanity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f action.yml || { echo "Missing root action.yml"; exit 1; }
+          yq --version >/dev/null 2>&1 || sudo apt-get update -y && sudo apt-get install -y yq || true
+          yq 'has("runs") and .runs.using == "composite"' action.yml >/dev/null 2>&1 || {
+            echo "action.yml must define a composite action"; exit 1; }

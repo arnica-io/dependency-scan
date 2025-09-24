@@ -1,0 +1,120 @@
+name: Auto Version on Main
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_tag: ${{ steps.tagger.outputs.new_tag }}
+      changed: ${{ steps.prepare.outputs.changed }}
+      work_branch: ${{ steps.prepare.outputs.work_branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Bump version and push tag
+        id: tagger
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: v
+          release_branches: main
+          default_bump: patch
+          create_annotated_tag: true
+          dry_run: false
+
+      - name: Create GitHub Release
+        if: steps.tagger.outputs.new_tag
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.0
+        with:
+          tag_name: ${{ steps.tagger.outputs.new_tag }}
+          generate_release_notes: true
+
+      - name: Update major tag (e.g., v1)
+        if: steps.tagger.outputs.new_tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG_NAME="${{ steps.tagger.outputs.new_tag }}"
+          MAJOR_TAG=$(echo "$TAG_NAME" | sed -E 's/^v([0-9]+).*/v\1/')
+          echo "Updating $MAJOR_TAG to point to $TAG_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$MAJOR_TAG" --force
+
+      - name: Update README to latest version (create branch and push)
+        if: steps.tagger.outputs.new_tag
+        shell: bash
+        id: prepare
+        env:
+          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          set -x
+          git fetch origin "${DEFAULT_BRANCH}:${DEFAULT_BRANCH}" || true
+          git checkout "${DEFAULT_BRANCH}" || git checkout -B "${DEFAULT_BRANCH}" "origin/${DEFAULT_BRANCH}"
+          echo "Before update lines (broad scan):"; grep -nE '[A-Za-z0-9_.-]+/dependency-scan@[^[:space:]]+' README.md || true
+          BEFORE_COUNT=$(grep -cE '[A-Za-z0-9_.-]+/dependency-scan@[^[:space:]]+' README.md || true)
+          if [ -f README.md ]; then
+            # Replace ANY org '*/dependency-scan@VERSION' across the file
+            sed -i.bak -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+|\1${TAG_NAME}|g" README.md
+            rm -f README.md.bak
+          fi
+          echo "After update lines (broad scan):"; grep -nE '[A-Za-z0-9_.-]+/dependency-scan@[^[:space:]]+' README.md || true
+          AFTER_COUNT=$(grep -cE '[A-Za-z0-9_.-]+/dependency-scan@[^[:space:]]+' README.md || true)
+          git --no-pager diff -- README.md | cat
+          if [ "${BEFORE_COUNT:-0}" -eq 0 ]; then
+            echo "No usage lines found; skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "work_branch=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --quiet -- README.md; then
+            echo "README.md already up to date for ${TAG_NAME}."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "work_branch=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          WORK_BRANCH="docs/readme-${TAG_NAME}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$WORK_BRANCH"
+          git add README.md
+          git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "work_branch=$WORK_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Post PR link in summary
+        if: steps.prepare.outputs.changed == 'true'
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+          WORK_BRANCH: ${{ steps.prepare.outputs.work_branch }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          URL="https://github.com/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${WORK_BRANCH}?expand=1"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## README update ready"
+              echo "Branch: \`${WORK_BRANCH}\`"
+              echo "Open PR: ${URL}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Open PR: ${URL}"
+          fi
