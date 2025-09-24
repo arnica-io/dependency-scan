@@ -87,7 +87,7 @@ jobs:
         continue-on-error: true
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.8.0
         with:
-          token: ${{ secrets.PR_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           branch: docs/readme-${{ steps.tagger.outputs.new_tag }}
           base: ${{ github.event.repository.default_branch }}
           title: "docs: update README usage to ${{ steps.tagger.outputs.new_tag }}"
@@ -95,25 +95,3 @@ jobs:
           reviewers: ofirshtrull
           labels: documentation
           draft: false
-
-      - name: Post manual PR link
-        if: steps.tagger.outputs.new_tag
-        shell: bash
-        env:
-          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          BRANCH="docs/readme-${TAG_NAME}"
-          URL="https://github.com/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${BRANCH}?expand=1"
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            {
-              echo "## README update ready"
-              echo "Branch: \`${BRANCH}\`"
-              echo "Open PR: ${URL}"
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Open PR: ${URL}"
-          fi
-
-      # Release creation, major tag update, and README bump handled directly in this workflow
