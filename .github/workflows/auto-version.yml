@@ -3,6 +3,8 @@ name: Auto Version on Main
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "README.md"
 
 jobs:
   tag:
