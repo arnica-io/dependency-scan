@@ -51,7 +51,7 @@ jobs:
           git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$MAJOR_TAG" --force
 
-      - name: Update README to latest version (prepare branch)
+      - name: Update README to latest version
         if: steps.tagger.outputs.new_tag
         shell: bash
         env:
@@ -60,9 +60,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          git fetch origin
-          WORK_BRANCH="docs/readme-${TAG_NAME}"
-          git checkout -B "$WORK_BRANCH" "origin/${DEFAULT_BRANCH}"
+          git fetch origin "$DEFAULT_BRANCH":"$DEFAULT_BRANCH" || true
+          git checkout "$DEFAULT_BRANCH" || git checkout -B "$DEFAULT_BRANCH"
           if [ -f README.md ]; then
             sed -i.bak -E "s|(uses:\s*[A-Za-z0-9_.-]+/dependency-scan@)[^\s]+|\1${TAG_NAME}|g" README.md
             rm -f README.md.bak
@@ -71,28 +70,10 @@ jobs:
             echo "README.md already up to date for ${TAG_NAME}."
             exit 0
           fi
-          echo "Changes prepared; will push branch $WORK_BRANCH."
-
-      - name: Push branch with README update
-        if: steps.tagger.outputs.new_tag
-        shell: bash
-        env:
-          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          WORK_BRANCH="docs/readme-${TAG_NAME}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "docs: update README usage to ${TAG_NAME}" || true
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            {
-              echo "## README update prepared"
-              echo "Branch: \`$WORK_BRANCH\`"
-              echo "Create a PR from this branch to \`${{ github.event.repository.default_branch }}\`."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "HEAD:${DEFAULT_BRANCH}"
 
       # Release creation, major tag update, and README bump handled directly in this workflow
