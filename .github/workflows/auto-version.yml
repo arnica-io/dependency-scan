@@ -92,4 +92,24 @@ jobs:
           add-paths: |
             README.md
 
+      - name: Post manual PR link (if PR creation is blocked)
+        if: steps.tagger.outputs.new_tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          BRANCH="docs/readme-${TAG_NAME}"
+          URL="https://github.com/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${BRANCH}?expand=1"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## README update ready"
+              echo "Branch: \`${BRANCH}\`"
+              echo "Open PR: ${URL}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Open PR: ${URL}"
+          fi
+
       # Release creation, major tag update, and README bump handled directly in this workflow
