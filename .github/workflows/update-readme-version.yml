@@ -28,9 +28,9 @@ jobs:
           git fetch origin "$TARGET_BRANCH":"$TARGET_BRANCH" || true
           git checkout "$TARGET_BRANCH" || git checkout -B "$TARGET_BRANCH"
 
-          # Update README usage lines to the new tag
+          # Update README usage lines to the new tag (any org)
           if [ -f README.md ]; then
-            sed -i.bak -E "s|(uses:\s*arnica-ext/dependency-scan@)[^\s]+|\\1${TAG_NAME}|g" README.md
+            sed -i.bak -E "s|(uses:\s*[A-Za-z0-9_.-]+/dependency-scan@)[^\s]+|\\1${TAG_NAME}|g" README.md
             rm -f README.md.bak
           fi
 
