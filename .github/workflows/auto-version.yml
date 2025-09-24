@@ -82,12 +82,11 @@ jobs:
           git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
 
-      - name: Create PR for README update with PAT (assign reviewer)
+      - name: Create PR for README update (assign reviewer)
         if: steps.tagger.outputs.new_tag
         continue-on-error: true
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.8.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           branch: docs/readme-${{ steps.tagger.outputs.new_tag }}
           base: ${{ github.event.repository.default_branch }}
           title: "docs: update README usage to ${{ steps.tagger.outputs.new_tag }}"
