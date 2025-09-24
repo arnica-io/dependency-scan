@@ -77,7 +77,6 @@ Security scan results appear in multiple locations:
 | `api-token`            |    No    |                             | Arnica API token; prefer secret env `ARNICA_API_TOKEN`                     |
 | `scan-timeout-seconds` |    No    | `900`                       | Timeout (seconds) to wait for scan completion                              |
 | `on-findings`          |    No    | `fail`                      | Behavior when findings are detected: fail, alert, or pass                  |
-| `debug`                |    No    | `"false"`                   | Enable verbose API response debug logs                                     |
 
 ### Outputs
 
