@@ -81,50 +81,18 @@ jobs:
           git commit -m "docs: update README usage to ${TAG_NAME}" || exit 0
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$WORK_BRANCH" --force
 
-      - name: Open PR and assign reviewer
+      - name: Create PR for README update (assign reviewer)
         if: steps.tagger.outputs.new_tag
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        env:
-          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.8.0
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tag = process.env.TAG_NAME;
-            const base = process.env.DEFAULT_BRANCH;
-            const branch = `docs/readme-${tag}`;
-            const { owner, repo } = context.repo;
-
-            // Find existing PR by head branch
-            const list = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${branch}`, base });
-            let pr = list.data[0];
-            if (!pr) {
-              const created = await github.rest.pulls.create({
-                owner, repo,
-                head: branch,
-                base,
-                title: `docs: update README usage to ${tag}`,
-                body: `Automated README update for ${tag}`
-              });
-              pr = created.data;
-            }
-
-            // Request reviewer (ignore if not permitted)
-            try {
-              await github.rest.pulls.requestReviewers({
-                owner, repo, pull_number: pr.number,
-                reviewers: ['ofirshtrull']
-              });
-            } catch (e) {
-              core.info(`Could not request reviewers: ${e.message}`);
-            }
-
-            // Summarize
-            if (core.summary) {
-              await core.summary
-                .addHeading('README update PR')
-                .addLink(`#${pr.number}: ${pr.title}`, pr.html_url)
-                .write();
-            }
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: docs/readme-${{ steps.tagger.outputs.new_tag }}
+          base: ${{ github.event.repository.default_branch }}
+          title: "docs: update README usage to ${{ steps.tagger.outputs.new_tag }}"
+          body: "Automated README update for ${{ steps.tagger.outputs.new_tag }}"
+          reviewers: ofirshtrull
+          labels: documentation
+          draft: false
 
       # Release creation, major tag update, and README bump handled directly in this workflow
