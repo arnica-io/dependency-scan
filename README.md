@@ -6,7 +6,8 @@
 
 ## Arnica Dependency Scan – GitHub Action
 
-Reusable GitHub Action that generates a Software Bill of Materials (SBOM) using cdxgen, uploads it to Arnica, and waits for the scan to complete, returning the scan identifier and final status.
+Extend Arnica’s security scanning into complex build environments that pull dependencies from multiple sources or compile packages from source.
+When real-time checks aren’t enough, post-build scanning validates SBOMs directly from your CI/CD pipelines via API, returning pass/fail results to enforce security gates before merges or deployments. Ensure consistent policy enforcement and centralized visibility in Arnica’s dashboard, even for environments with intricate dependency resolution.
 
 ### Quickstart
 
@@ -71,9 +72,9 @@ Security scan results appear in multiple locations:
 | Name                   | Required | Default                     | Description                                                                |
 | ---------------------- | :------: | --------------------------- | -------------------------------------------------------------------------- |
 | `repository-url`       |   Yes    |                             | Repository URL associated with the scan                                    |
-| `branch`               |    No    | `main`                      | Branch to associate with the scan                                          |
+| `branch`               |   Yes    | `main`                      | Branch to associate with the scan                                          |
 | `scan-path`            |   Yes    |                             | Directory path to scan and generate SBOM for (e.g., `.` or `services/api`) |
-| `api-base-url`         |   Yes    | `https://api.app.arnica.io` | Arnica API base URL                                                        |
+| `api-base-url`         |    No    | `https://api.app.arnica.io` | Arnica API base URL                                                        |
 | `api-token`            |    No    |                             | Arnica API token; prefer secret env `ARNICA_API_TOKEN`                     |
 | `scan-timeout-seconds` |    No    | `900`                       | Timeout (seconds) to wait for scan completion                              |
 | `on-findings`          |    No    | `fail`                      | Behavior when findings are detected: fail, alert, or pass                  |

@@ -9,14 +9,14 @@ inputs:
     required: true
   branch:
     description: Branch name associated with the scan
-    required: false
+    required: true
     default: main
   scan-path:
     description: Repository path to associate with the scan
     required: true
   api-base-url:
     description: Arnica API base URL (e.g., https://api.app.arnica.io)
-    required: true
+    required: false
     default: https://api.app.arnica.io
   scan-timeout-seconds:
     description: Maximum time to wait for scan completion in seconds
