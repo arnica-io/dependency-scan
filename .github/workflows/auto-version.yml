@@ -37,6 +37,7 @@ jobs:
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.0
         with:
           tag_name: ${{ steps.tagger.outputs.new_tag }}
+          name: Arnica Dependency Security Scan - ${{ steps.tagger.outputs.new_tag }}
           generate_release_notes: true
 
       - name: Update major tag (e.g., v1)
