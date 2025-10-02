@@ -1,4 +1,4 @@
-name: Dependency Security Scan
+name: Arnica Dependency Security Scan
 description: Scan a repository for dependencies and vulnerabilities
 branding:
   icon: upload-cloud

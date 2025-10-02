@@ -35,7 +35,7 @@ jobs:
 
       - name: Dependency Security Scan with Arnica
         id: arnica
-        uses: arnica-io/dependency-scan@v1.0.5
+        uses: arnica-io/dependency-scan@v1.0.7
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
@@ -104,7 +104,7 @@ Scan a subdirectory and alert (do not fail) on policy violations:
 ```yaml
 - name: Generate SBOM and scan with Arnica
   id: arnica
-  uses: arnica-io/dependency-scan@v1.0.5
+  uses: arnica-io/dependency-scan@v1.0.7
   env:
     ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
   with:
