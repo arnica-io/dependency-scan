@@ -39,7 +39,7 @@ inputs:
     default: "false"
 outputs:
   scan-id:
-    description: Arnica scan identifier
+    description: Arnica scan identifier.
     value: ${{ steps.arnica.outputs.scan_id }}
   status:
     description: Final scan status (Success, Failure, Error, Skipped, Timeout)

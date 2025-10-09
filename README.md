@@ -39,8 +39,8 @@ jobs:
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
-          repository-url: ${{ github.repository }}
-          branch: ${{ github.head_ref }}
+          repository-url: ${{ github.server_url }}/${{ github.repository }}
+          branch: ${{ github.head_ref | github.ref_name }} # Uses the PR source branch for pull requests, or the current branch for pushes
           scan-path: .
 
       - name: Print scan results
