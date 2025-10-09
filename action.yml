@@ -57,16 +57,36 @@ runs:
     - name: Create SBOM
       shell: bash
       env:
-        DEBUG: ${{ inputs.debug }}
+        DEBUG: "${{ inputs.debug }}"
+        SCAN_PATH: "${{ inputs.scan-path }}"
       run: |
         # Creating SBOM in the scan-path
-        cd ${{ inputs.scan-path }}
+        set -euo pipefail
+
+        if [ ! -d "$SCAN_PATH" ]; then
+          echo "Error: scan-path directory does not exist: $SCAN_PATH"
+          exit 1
+        fi
+
+        cd "$SCAN_PATH"
+
         if [ "${DEBUG:-false}" = "true" ]; then
+          echo "Running cdxgen in debug mode..."
           cdxgen .
-          cat bom.json |jq  '.metadata.tools.components[0]'
+          if [ ! -f "bom.json" ]; then
+            echo "Error: cdxgen did not create bom.json"
+            exit 1
+          fi
+          cat bom.json | jq '.metadata.tools.components[0]'
         else
           cdxgen . >/dev/null 2>&1
+          if [ ! -f "bom.json" ]; then
+            echo "Error: cdxgen failed to create SBOM file (bom.json)"
+            exit 1
+          fi
         fi
+
+        echo "SBOM created successfully at $SCAN_PATH/bom.json"
 
     - name: Ensure jq is installed
       shell: bash
@@ -87,28 +107,39 @@ runs:
       id: arnica
       shell: bash
       env:
-        REPO: ${{ inputs.repository-url }}
-        BRANCH: ${{ inputs.branch }}
-        SBOM: ${{ inputs.scan-path }}/bom.json
-        SCAN_PATH: ${{ inputs.scan-path }}
-        API: ${{ inputs.api-base-url }}
-        SCAN_TIMEOUT_SECONDS: ${{ inputs.scan-timeout-seconds }}
-        API_TOKEN_INPUT: ${{ inputs.api-token }}
-        ON_FINDINGS: ${{ inputs.on-findings }}
-        DEBUG: ${{ inputs.debug }}
+        REPO: "${{ inputs.repository-url }}"
+        BRANCH: "${{ inputs.branch }}"
+        SBOM: "${{ inputs.scan-path }}/bom.json"
+        SCAN_PATH: "${{ inputs.scan-path }}"
+        API: "${{ inputs.api-base-url }}"
+        SCAN_TIMEOUT_SECONDS: "${{ inputs.scan-timeout-seconds }}"
+        API_TOKEN_INPUT: "${{ inputs.api-token }}"
+        ON_FINDINGS: "${{ inputs.on-findings }}"
+        DEBUG: "${{ inputs.debug }}"
       run: |
         # Upload SBOM to Arnica and wait for scan
         set -euo pipefail
 
-        if [ -z "${REPO:-}" ] || [ -z "${BRANCH:-}" ] || [ -z "${SBOM:-}" ] || [ -z "${SCAN_PATH:-}" ]; then
-          echo "Missing required inputs."
-          exit 1
-        fi
+        for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
+          if [ -z "${!var:-}" ]; then
+            echo "Error: Missing required input: $var"
+            exit 1
+          fi
+        done
 
         if [ -z "${API:-}" ]; then
           echo "API endpoint is not defined. Provide input 'api-base-url'."
           exit 1
         fi
+
+        # Validate ON_FINDINGS input
+        case "${ON_FINDINGS:-fail}" in
+          fail|alert|pass) ;;
+          *)
+            echo "Error: Invalid on-findings value: '${ON_FINDINGS}'. Must be one of: fail, alert, pass"
+            exit 1
+            ;;
+        esac
 
         # Expect SBOM file at the provided path (typically ./bom.json)
         if [ ! -f "$SBOM" ]; then
@@ -181,8 +212,13 @@ runs:
         echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
         echo "Uploading SBOM..."
 
-        curl -H "Content-Type: application/json" -Ss -X PUT --data-binary @"$SBOM" "$URL"
-        echo "Upload completed."
+        HTTP_CODE=$(curl -w "%{http_code}" -o /dev/null -H "Content-Type: application/json" -Ss -X PUT --data-binary @"$SBOM" "$URL")
+        if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+          echo "Error: SBOM upload failed with HTTP status code: $HTTP_CODE"
+          echo "status=Error" >> "$GITHUB_OUTPUT"
+          exit 1
+        fi
+        echo "Upload completed successfully (HTTP $HTTP_CODE)."
 
         START_TIME=$(date +%s)
         echo "Waiting for scan completion (timeout: ${SCAN_TIMEOUT}s)..."
