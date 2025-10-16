@@ -13,7 +13,8 @@ inputs:
     default: main
   scan-path:
     description: Repository path to associate with the scan
-    required: true
+    required: false
+    default: "."
   api-base-url:
     description: Arnica API base URL (e.g., https://api.app.arnica.io)
     required: false

@@ -73,7 +73,7 @@ Security scan results appear in multiple locations:
 | ---------------------- | :------: | --------------------------- | -------------------------------------------------------------------------- |
 | `repository-url`       |   Yes    |                             | Repository URL associated with the scan                                    |
 | `branch`               |   Yes    | `main`                      | Branch to associate with the scan                                          |
-| `scan-path`            |   Yes    |                             | Directory path to scan and generate SBOM for (e.g., `.` or `services/api`) |
+| `scan-path`            |   No     |  `.`                        | Directory path to scan and generate SBOM for (e.g., `.` or `services/api`) |
 | `api-base-url`         |    No    | `https://api.app.arnica.io` | Arnica API base URL                                                        |
 | `api-token`            |    No    |                             | Arnica API token; prefer secret env `ARNICA_API_TOKEN`                     |
 | `scan-timeout-seconds` |    No    | `900`                       | Timeout (seconds) to wait for scan completion                              |
