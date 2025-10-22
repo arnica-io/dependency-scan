@@ -167,18 +167,16 @@ runs:
           *) API_PATH="/$SCAN_PATH" ;;
         esac
 
-        REQUEST_BODY=$(jq -n \
-          --arg repo "$REPO" \
-          --arg branch "$BRANCH" \
-          --arg path "$API_PATH" \
-          '{repositoryUrl: $repo, branch: $branch, path: $path}')
-
         RESULT=$(curl -Ss -X 'POST' \
           "${API}/v1/sbom/scan/upload" \
           -H 'accept: application/json' \
           -H "Authorization: Bearer ${TOKEN}" \
           -H 'Content-Type: application/json' \
-          -d "$REQUEST_BODY")
+          -d '{
+                "repositoryUrl": "'$REPO'",
+                "branch": "'$BRANCH'",
+                "path": "'$API_PATH'"
+              }')
 
         STATUS=$(echo "$RESULT" | jq -r .statusCode)
         if [ "$STATUS" != "null" ] && [ "$STATUS" -ne 200 ]; then
