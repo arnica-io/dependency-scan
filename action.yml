@@ -164,6 +164,7 @@ runs:
         case "$SCAN_PATH" in
           /*) API_PATH="$SCAN_PATH" ;;
           "") API_PATH="/" ;;
+          ".") API_PATH="/" ;;
           *) API_PATH="/$SCAN_PATH" ;;
         esac
 
