@@ -63,6 +63,8 @@ runs:
       run: |
         # Creating SBOM in the scan-path
         set -euo pipefail
+        # remove leading slash if present (path should be relative)
+        SCAN_PATH=${SCAN_PATH#/}
 
         if [ ! -d "$SCAN_PATH" ]; then
           echo "Error: scan-path directory does not exist: $SCAN_PATH"
@@ -120,6 +122,8 @@ runs:
       run: |
         # Upload SBOM to Arnica and wait for scan
         set -euo pipefail
+        # remove leading slash if present (path should be relative)
+        SCAN_PATH=${SCAN_PATH#/}
 
         for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
           if [ -z "${!var:-}" ]; then
