@@ -168,6 +168,13 @@ runs:
           *) API_PATH="/$SCAN_PATH" ;;
         esac
 
+        # Set SBOM file path
+        if [ "$SCAN_PATH" = "/" ]; then
+          SBOM="/bom.json"
+        else
+          SBOM="$SCAN_PATH/bom.json"
+        fi
+
         RESULT=$(curl -Ss -X 'POST' \
           "${API}/v1/sbom/scan/upload" \
           -H 'accept: application/json' \
