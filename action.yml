@@ -170,7 +170,7 @@ runs:
 
         # Set SBOM file path
         if [ "$SCAN_PATH" = "/" ]; then
-          SBOM="/bom.json"
+          SBOM="./bom.json"
         else
           SBOM="$SCAN_PATH/bom.json"
         fi
