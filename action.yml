@@ -119,6 +119,7 @@ runs:
         set -euo pipefail
         # remove leading slash if present (path should be relative)
         SCAN_PATH=${SCAN_PATH#/}
+        SBOM=${SBOM#/}
 
         for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
           if [ -z "${!var:-}" ]; then
