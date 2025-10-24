@@ -66,11 +66,6 @@ runs:
         # remove leading slash if present (path should be relative)
         SCAN_PATH=${SCAN_PATH#/}
 
-        if [ ! -d "$SCAN_PATH" ]; then
-          echo "Error: scan-path directory does not exist: $SCAN_PATH"
-          exit 1
-        fi
-
         cd "$SCAN_PATH"
 
         if [ "${DEBUG:-false}" = "true" ]; then
