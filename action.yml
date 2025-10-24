@@ -110,6 +110,7 @@ runs:
       env:
         REPO: "${{ inputs.repository-url }}"
         BRANCH: "${{ inputs.branch }}"
+        SBOM: "${{ inputs.scan-path }}/bom.json"
         SCAN_PATH: "${{ inputs.scan-path }}"
         API: "${{ inputs.api-base-url }}"
         SCAN_TIMEOUT_SECONDS: "${{ inputs.scan-timeout-seconds }}"
@@ -120,7 +121,7 @@ runs:
         # Upload SBOM to Arnica and wait for scan
         set -euo pipefail
 
-        for var in "REPO" "BRANCH" "SCAN_PATH"; do
+        for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
           if [ -z "${!var:-}" ]; then
             echo "Error: Missing required input: $var"
             exit 1
@@ -169,7 +170,7 @@ runs:
 
         # Set SBOM file path
         if [ "$SCAN_PATH" = "/" ]; then
-          SBOM="./bom.json"
+          SBOM="/bom.json"
         else
           SBOM="$SCAN_PATH/bom.json"
         fi
