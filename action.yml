@@ -63,11 +63,8 @@ runs:
       run: |
         # Creating SBOM in the scan-path
         set -euo pipefail
-
-        if [ ! -d "$SCAN_PATH" ]; then
-          echo "Error: scan-path directory does not exist: $SCAN_PATH"
-          exit 1
-        fi
+        # remove leading slashes if present (path should be relative)
+        SCAN_PATH=$(echo "$SCAN_PATH" | sed 's:^/*::')
 
         cd "$SCAN_PATH"
 
@@ -120,8 +117,11 @@ runs:
       run: |
         # Upload SBOM to Arnica and wait for scan
         set -euo pipefail
+        # remove leading slashes if present (path should be relative)
+        SCAN_PATH=$(echo "$SCAN_PATH" | sed 's:^/*::')
+        SBOM=$(echo "$SBOM" | sed 's:^/*::')
 
-        for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
+        for var in "REPO" "BRANCH" "SBOM"; do
           if [ -z "${!var:-}" ]; then
             echo "Error: Missing required input: $var"
             exit 1
