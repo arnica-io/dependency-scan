@@ -120,7 +120,7 @@ runs:
         # Upload SBOM to Arnica and wait for scan
         set -euo pipefail
 
-        for var in "REPO" "BRANCH" "SBOM" "SCAN_PATH"; do
+        for var in "REPO" "BRANCH" "SCAN_PATH"; do
           if [ -z "${!var:-}" ]; then
             echo "Error: Missing required input: $var"
             exit 1
