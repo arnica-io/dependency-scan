@@ -110,7 +110,6 @@ runs:
       env:
         REPO: "${{ inputs.repository-url }}"
         BRANCH: "${{ inputs.branch }}"
-        SBOM: "${{ inputs.scan-path }}/bom.json"
         SCAN_PATH: "${{ inputs.scan-path }}"
         API: "${{ inputs.api-base-url }}"
         SCAN_TIMEOUT_SECONDS: "${{ inputs.scan-timeout-seconds }}"
