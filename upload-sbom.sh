@@ -51,7 +51,7 @@ case "$SCAN_PATH" in
     *) API_PATH="/$SCAN_PATH" ;;
 esac
 
-RESULT=$(curl -Ss -X 'POST' \
+RESULT=$(curl --retry 3 --max-time 30 --connect-timeout 10 -Ss -X 'POST' \
     "${API}/v1/sbom/scan/upload" \
     -H 'accept: application/json' \
     -H "Authorization: Bearer ${TOKEN}" \
@@ -95,7 +95,7 @@ echo "scanId=$SCANID"
 echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
 echo "Uploading SBOM..."
 
-HTTP_CODE=$(curl -w "%{http_code}" -o /dev/null -H "Content-Type: application/json" -Ss -X PUT --data-binary @"$SBOM" "$URL")
+HTTP_CODE=$(curl --retry 3 --max-time 30 --connect-timeout 10 -w "%{http_code}" -o /dev/null -H "Content-Type: application/json" -Ss -X PUT --data-binary @"$SBOM" "$URL")
 if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
     echo "Error: SBOM upload failed with HTTP status code: $HTTP_CODE"
     echo "status=Error" >> "$GITHUB_OUTPUT"
@@ -116,7 +116,7 @@ while true; do
         exit 0
     fi
 
-    RESPONSE=$(curl -sS -X GET \
+    RESPONSE=$(curl --retry 3 --max-time 30 --connect-timeout 10 -sS -X GET \
     "${API}/v1/sbom/scan/${SCANID}/status" \
     -H "accept: application/json" \
     -H "Authorization: Bearer ${TOKEN}")
@@ -279,7 +279,7 @@ while true; do
     FINDINGS_COUNT=$(echo "$RESPONSE" | jq -r '(.findingsSummary.findings // []) | length')
     while [ "${FINDINGS_COUNT:-0}" -eq 0 ] && [ $ATTEMPTS -lt 5 ]; do
         sleep 2
-        RESPONSE=$(curl -sS -X GET \
+        RESPONSE=$(curl --retry 3 --max-time 30 --connect-timeout 10 -sS -X GET \
         "${API}/v1/sbom/scan/${SCANID}/status" \
         -H "accept: application/json" \
         -H "Authorization: Bearer ${TOKEN}")
