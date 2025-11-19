@@ -120,4 +120,4 @@ runs:
         API_TOKEN_INPUT: "${{ inputs.api-token }}"
         ON_FINDINGS: "${{ inputs.on-findings }}"
         DEBUG: "${{ inputs.debug }}"
-      run: ${{ github.action_path }}/upload-sbom.sh
+      run: "${{ github.action_path }}/upload-sbom.sh"
