@@ -1,0 +1,33 @@
+name: Arnica SBOM Upload
+
+on: pull_request
+
+jobs:
+  scan-sbom:
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2 #v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Generate SBOM and scan with Arnica
+        id: arnica
+        uses: arnica-io/dependency-scan@main
+        env:
+          ARNICA_API_TOKEN: ${{ secrets.ARNICA_SBOM_UPLOAD_API_TOKEN }}
+        with:
+          repository-url: "${{ github.server_url }}/${{ github.repository }}"
+          branch: ${{ github.head_ref }}
+          scan-path: "tests"
+          on-findings: alert
+
+      - name: Print results
+        run: |
+          echo "scan-id=${{ steps.arnica.outputs['scan-id'] }}"
+          echo "status=${{ steps.arnica.outputs.status }}"

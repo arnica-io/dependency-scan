@@ -1,0 +1,17 @@
+{
+  "name": "small-package-lock",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http-server": "^13.0.1",
+    "i": "^0.3.7",
+    "npm": "^11.6.3",
+    "url-parse": "1.4.7"
+  }
+}
