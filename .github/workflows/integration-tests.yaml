@@ -27,6 +27,7 @@ jobs:
           scan-path: "tests"
           on-findings: alert
 
+
       - name: Print results
         run: |
           echo "scan-id=${{ steps.arnica.outputs['scan-id'] }}"
