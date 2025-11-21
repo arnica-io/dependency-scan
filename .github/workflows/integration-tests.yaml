@@ -30,6 +30,7 @@ jobs:
           repository-url: "${{ github.server_url }}/${{ github.repository }}"
           branch: ${{ github.head_ref }}
           scan-path: "tests"
+          api-base-url: ${{ secrets.ARNICA_API_BASE_URL }}
           on-findings: alert
 
       - name: Print results
