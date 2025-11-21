@@ -1,6 +1,11 @@
-name: Arnica SBOM Upload
+name: Arnica SBOM Upload Integration Tests
 
-on: pull_request
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   scan-sbom:
@@ -26,7 +31,6 @@ jobs:
           branch: ${{ github.head_ref }}
           scan-path: "tests"
           on-findings: alert
-
 
       - name: Print results
         run: |
