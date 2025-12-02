@@ -48,8 +48,8 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-      name: Setup pnpm
+    - name: Setup pnpm
+      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
       with:
         run_install: false
         version: 10.21.0
@@ -57,67 +57,29 @@ runs:
     - name: Install node
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
 
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd $GITHUB_ACTION_PATH
+        npm ci
+
     - name: Install cdxgen
       shell: bash
       run: npm install -g @cyclonedx/cdxgen@${{ inputs.cdxgen-version }}
 
-    - name: Create SBOM
-      shell: bash
-      env:
-        DEBUG: "${{ inputs.debug }}"
-        SCAN_PATH: "${{ inputs.scan-path }}"
-      run: |
-        # Creating SBOM in the scan-path
-        set -euo pipefail
-        # remove leading slashes if present (path should be relative)
-        SCAN_PATH=$(echo "$SCAN_PATH" | sed 's:^/*::')
-
-        cd "$SCAN_PATH"
-
-        if [ "${DEBUG:-false}" = "true" ]; then
-          echo "Running cdxgen in debug mode..."
-          cdxgen .
-          if [ ! -f "bom.json" ]; then
-            echo "Error: cdxgen did not create bom.json"
-            exit 1
-          fi
-          cat bom.json | jq '.metadata.tools.components[0]'
-        else
-          cdxgen . >/dev/null 2>&1
-          if [ ! -f "bom.json" ]; then
-            echo "Error: cdxgen failed to create SBOM file (bom.json)"
-            exit 1
-          fi
-        fi
-
-        echo "SBOM created successfully at $SCAN_PATH/bom.json"
-
-    - name: Ensure jq is installed
-      shell: bash
-      run: |
-        # Ensure jq is installed
-        set -euo pipefail
-        if ! command -v jq >/dev/null 2>&1; then
-          if command -v apt-get >/dev/null 2>&1; then
-            sudo apt-get update -y
-            sudo apt-get install -y jq
-          else
-            echo "jq not found and apt-get is unavailable on this runner. Please install jq."
-            exit 1
-          fi
-        fi
-
-    - name: Upload SBOM to Arnica and wait for scan
+    - name: Run Arnica dependency scan
       id: arnica
       shell: bash
       env:
-        REPO: "${{ inputs.repository-url }}"
-        BRANCH: "${{ inputs.branch }}"
-        SBOM: "${{ inputs.scan-path }}/bom.json"
-        SCAN_PATH: "${{ inputs.scan-path }}"
-        API: "${{ inputs.api-base-url }}"
-        SCAN_TIMEOUT_SECONDS: "${{ inputs.scan-timeout-seconds }}"
-        API_TOKEN_INPUT: "${{ inputs.api-token }}"
-        ON_FINDINGS: "${{ inputs.on-findings }}"
-        DEBUG: "${{ inputs.debug }}"
-      run: $GITHUB_ACTION_PATH/upload-sbom.sh
+        # In composite actions, @actions/core looks for inputs as environment variables with the INPUT_ prefix
+        INPUT_REPOSITORY_URL: ${{ inputs.repository-url }}
+        INPUT_BRANCH: ${{ inputs.branch }}
+        INPUT_SCAN_PATH: ${{ inputs.scan-path }}
+        INPUT_API_BASE_URL: ${{ inputs.api-base-url }}
+        INPUT_SCAN_TIMEOUT_SECONDS: ${{ inputs.scan-timeout-seconds }}
+        INPUT_API_TOKEN: ${{ inputs.api-token }}
+        INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
+        INPUT_DEBUG: ${{ inputs.debug }}
+      run: |
+        cd $GITHUB_ACTION_PATH
+        npx ts-node src/main.ts
