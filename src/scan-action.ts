@@ -242,10 +242,7 @@ export class DependencyScanAction {
     core.setOutput("scanId", result.scanId ?? "");
   }
 
-  private async writeSummaryAndExit(
-    result: DependencyScanRunResult
-  ): Promise<void> {
-    let exitCode = 0;
+  private async writeSummary(result: DependencyScanRunResult): Promise<void> {
     const statusMetadata = DependencyScanStatusMetadata[result.status];
     let summaryMessage: string;
     let findingsSummary: SbomScanResult["findingsSummary"] | undefined;
@@ -265,12 +262,10 @@ export class DependencyScanAction {
         break;
       case "Failure":
         summaryMessage = `❌ One or more policy violations found.`;
-        exitCode = this.input.onFindings === "fail" ? 1 : 0;
         findingsSummary = result.result.findingsSummary;
         break;
       case "Error":
         summaryMessage = `❌ Scan encountered an error: ${result.message}`;
-        exitCode = 1;
         break;
       case "Skipped":
         summaryMessage = `⏭️ Scan skipped, reason: ${result.message}`;
@@ -280,14 +275,20 @@ export class DependencyScanAction {
     core.info(summaryMessage);
 
     await SummaryWriter.writeSummary(summaryMessage, findingsSummary);
-
-    process.exit(exitCode);
   }
 
   public async run(): Promise<void> {
     const result = await this.tryRun();
 
     await this.setOutputs(result);
-    await this.writeSummaryAndExit(result);
+    await this.writeSummary(result);
+
+    // exit 1 on failure
+    if (
+      result.status === "Error" ||
+      (result.status === "Failure" && this.input.onFindings === "fail")
+    ) {
+      process.exit(1);
+    }
   }
 }
