@@ -239,7 +239,7 @@ export class DependencyScanAction {
 
   private async setOutputs(result: DependencyScanRunResult): Promise<void> {
     core.setOutput("status", result.status);
-    core.setOutput("scanId", result.scanId ?? "");
+    core.setOutput("scan_id", result.scanId ?? "");
   }
 
   private async writeSummary(result: DependencyScanRunResult): Promise<void> {
