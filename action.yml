@@ -60,12 +60,15 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        cd $GITHUB_ACTION_PATH
+        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
+        cd "$GITHUB_ACTION_PATH"
         npm ci
 
     - name: Install cdxgen
       shell: bash
-      run: npm install -g @cyclonedx/cdxgen@${{ inputs.cdxgen-version }}
+      run: |
+        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
+        npm install -g @cyclonedx/cdxgen@${{ inputs.cdxgen-version }}
 
     - name: Run Arnica dependency scan
       id: arnica
@@ -81,5 +84,6 @@ runs:
         INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
         INPUT_DEBUG: ${{ inputs.debug }}
       run: |
-        cd $GITHUB_ACTION_PATH
+        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
+        cd "$GITHUB_ACTION_PATH"
         npx ts-node src/main.ts
