@@ -62,13 +62,7 @@ runs:
       run: |
         (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
         cd "$GITHUB_ACTION_PATH"
-        npm ci
-
-    - name: Install cdxgen
-      shell: bash
-      run: |
-        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
-        npm install -g "@cyclonedx/cdxgen@${{ inputs.cdxgen-version }}"
+        pnpm install --frozen-lockfile
 
     - name: Run Arnica dependency scan
       id: arnica
@@ -86,4 +80,5 @@ runs:
       run: |
         (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
         cd "$GITHUB_ACTION_PATH"
-        npx ts-node src/main.ts
+        export PATH="$GITHUB_ACTION_PATH/node_modules/.bin:$PATH"
+        ts-node src/main.ts
