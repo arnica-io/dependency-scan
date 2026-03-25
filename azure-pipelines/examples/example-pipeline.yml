@@ -1,0 +1,39 @@
+# Example: Arnica Dependency Scan in Azure DevOps
+#
+# This pipeline demonstrates how to use the Arnica dependency scan template
+# from the arnica-io/dependency-scan GitHub repository.
+#
+# Prerequisites:
+#   1. Create a GitHub service connection in Azure DevOps
+#      (Project Settings > Service Connections > New > GitHub)
+#   2. Set ARNICA_API_TOKEN as a secret pipeline variable or in a variable group
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+resources:
+  repositories:
+    - repository: dependency-scan
+      type: github
+      name: arnica-io/dependency-scan
+      endpoint: <your-github-service-connection>
+      ref: refs/tags/v1
+
+variables:
+  - group: arnica-secrets  # Variable group containing ARNICA_API_TOKEN
+
+steps:
+  - checkout: self
+  - checkout: dependency-scan
+
+  - template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
+    parameters:
+      repositoryUrl: $(Build.Repository.Uri)
+      branch: $(Build.SourceBranchName)
+      scanPath: "."
+      onFindings: "fail"

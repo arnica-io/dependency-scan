@@ -1,5 +1,5 @@
 import { FindingSeverity, SbomScanResult } from "./api";
-import * as core from "@actions/core";
+import { Platform } from "./platform/platform";
 
 const FindingSeverityLabel: Record<FindingSeverity, string> = {
   critical: "🔴 Critical",
@@ -8,65 +8,63 @@ const FindingSeverityLabel: Record<FindingSeverity, string> = {
   low: "🔵 Low",
 };
 
+function markdownTable(
+  headers: string[],
+  rows: string[][]
+): string {
+  const headerRow = `| ${headers.join(" | ")} |`;
+  const separator = `| ${headers.map(() => "---").join(" | ")} |`;
+  const dataRows = rows.map((row) => `| ${row.join(" | ")} |`).join("\n");
+  return `${headerRow}\n${separator}\n${dataRows}\n`;
+}
+
 export class SummaryWriter {
   private constructor() {}
 
   public static async writeSummary(
+    platform: Platform,
     message: string,
     findingsSummary?: SbomScanResult["findingsSummary"]
   ): Promise<void> {
-    await core.summary.addHeading("Summary").addRaw(message).write();
+    let markdown = `# Summary\n\n${message}\n\n`;
 
     if (!findingsSummary || findingsSummary.total === 0) {
+      await platform.writeSummary(markdown);
       return;
     }
 
-    /** Print table of finding severity counts **/
-    await core.summary
-      .addHeading("Findings")
-      .addTable([
-        [
-          { data: "Severity", header: true },
-          { data: "Total", header: true },
-        ],
-        ...FindingSeverity.map((severity) => [
-          { data: FindingSeverityLabel[severity] },
-          { data: findingsSummary[severity].toString() },
-        ]),
+    markdown += `# Findings\n\n`;
+    markdown += markdownTable(
+      ["Severity", "Total"],
+      FindingSeverity.map((severity) => [
+        FindingSeverityLabel[severity],
+        findingsSummary[severity].toString(),
       ])
-      .write();
+    );
+    markdown += "\n";
 
-    /** Print tables of individual findings by severity **/
     for (const severity of FindingSeverity) {
       if (findingsSummary[severity] > 0) {
-        await core.summary
-          .addHeading(
-            `${FindingSeverityLabel[severity]} Findings (${findingsSummary[severity]})`,
-            2
-          )
-          .addTable([
-            [
-              { data: "Title", header: true },
-              { data: "Finding Type", header: true },
-              { data: "Status", header: true },
-              { data: "Recommendation", header: true },
-            ],
-            ...findingsSummary.findings
-              .filter((finding) => finding.severity === severity)
-              .map((finding) => [
-                finding.title,
-                finding.type,
-                // E.g. "requires_review" -> "Requires Review"
-                finding.status
-                  .split("_")
-                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(" "),
-                finding.recommendation?.description ??
-                  "No specific fix available",
-              ]),
-          ])
-          .write();
+        markdown += `## ${FindingSeverityLabel[severity]} Findings (${findingsSummary[severity]})\n\n`;
+        markdown += markdownTable(
+          ["Title", "Finding Type", "Status", "Recommendation"],
+          findingsSummary.findings
+            .filter((finding) => finding.severity === severity)
+            .map((finding) => [
+              finding.title,
+              finding.type,
+              finding.status
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" "),
+              finding.recommendation?.description ??
+                "No specific fix available",
+            ])
+        );
+        markdown += "\n";
       }
     }
+
+    await platform.writeSummary(markdown);
   }
 }

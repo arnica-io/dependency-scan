@@ -1,5 +1,5 @@
-import * as core from "@actions/core";
 import * as path from "path";
+import { Platform } from "./platform/platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
@@ -11,7 +11,7 @@ export interface DependencyScanInput {
    */
   readonly scanPath: string;
   /**
-   * Path to the repository in the GitHub runner to scan.
+   * Path to the repository on the CI runner to scan.
    */
   readonly repoScanPath: string;
   readonly apiBaseUrl: string;
@@ -21,17 +21,15 @@ export interface DependencyScanInput {
   readonly debug: boolean;
 }
 
-export function getValidatedInput(): DependencyScanInput {
+export function getValidatedInput(platform: Platform): DependencyScanInput {
+  const workspacePath = platform.getWorkspacePath();
+
   const input: DependencyScanInput = {
     repoUrl: process.env.INPUT_REPOSITORY_URL || "",
     branch: process.env.INPUT_BRANCH || "",
     scanPath: process.env.INPUT_SCAN_PATH || "",
-    // The scan path is relative to the repository root
     repoScanPath: path.normalize(
-      path.join(
-        process.env.GITHUB_WORKSPACE || "",
-        process.env.INPUT_SCAN_PATH || ""
-      )
+      path.join(workspacePath, process.env.INPUT_SCAN_PATH || "")
     ),
     apiBaseUrl: process.env.INPUT_API_BASE_URL || "",
     scanTimeoutSeconds: parseInt(
@@ -44,13 +42,12 @@ export function getValidatedInput(): DependencyScanInput {
   };
 
   if (input.debug) {
-    core.info(`env.GITHUB_WORKSPACE=${process.env.GITHUB_WORKSPACE}`);
-    core.info(`Input: ${JSON.stringify(input, null, 2)}`);
+    platform.info(`Workspace path: ${workspacePath}`);
+    platform.info(`Input: ${JSON.stringify(input, null, 2)}`);
   }
 
-  // Validate ON_FINDINGS input
   if (!onFindings.includes(input.onFindings)) {
-    core.setFailed(
+    platform.setFailed(
       `Invalid on-findings value: '${
         input.onFindings
       }'. Must be one of: ${onFindings.join(", ")}`
@@ -58,7 +55,7 @@ export function getValidatedInput(): DependencyScanInput {
   }
 
   if (!input.apiToken) {
-    core.setFailed(
+    platform.setFailed(
       "API token is missing. Pass env ARNICA_API_TOKEN from a secret."
     );
   }

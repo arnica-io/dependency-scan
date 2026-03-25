@@ -1,5 +1,4 @@
 import { Sbom } from "./sbom";
-import * as core from "@actions/core";
 
 export interface StartSbomScanRequest {
   readonly repositoryUrl: string;
@@ -65,10 +64,16 @@ export type ApiResponse<T, U = ApiErrorResponse> =
   | { success: false; data: U };
 export type UploadSbomResponse = ApiResponse<void>;
 
+export interface ApiLogger {
+  info(message: string): void;
+  error(message: string): void;
+}
+
 export interface ApiOptions {
   readonly timeoutSeconds: number;
   readonly maxRetries: number;
   readonly debug: boolean;
+  readonly logger: ApiLogger;
 }
 
 export class SbomApiClient {
@@ -103,7 +108,7 @@ export class SbomApiClient {
     let error: string | undefined;
 
     if (this.options.debug) {
-      core.info(
+      this.options.logger.info(
         `Fetching ${options.method || "GET"} ${url} with body: ${JSON.stringify(
           options.body || "",
           null,
@@ -127,7 +132,7 @@ export class SbomApiClient {
           e instanceof Error ? e.message : String(e)
         }`;
 
-        core.error(error);
+        this.options.logger.error(error);
       }
     }
 
@@ -162,7 +167,7 @@ export class SbomApiClient {
     }
 
     if (this.options.debug) {
-      core.info(`Response: ${JSON.stringify(result, null, 2)}`);
+      this.options.logger.info(`Response: ${JSON.stringify(result, null, 2)}`);
     }
 
     return result;

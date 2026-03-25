@@ -1,0 +1,98 @@
+# Arnica Dependency Security Scan - Azure DevOps Pipeline Template
+#
+# This template scans a repository for dependency vulnerabilities using cdxgen
+# and the Arnica API. It reuses the same TypeScript scan logic as the GitHub
+# Action, with an Azure DevOps platform adapter.
+#
+# Prerequisites:
+#   1. A GitHub service connection configured in your Azure DevOps project
+#      (Project Settings > Service Connections > New > GitHub)
+#   2. ARNICA_API_TOKEN set as a pipeline variable or variable group secret
+#
+# Usage:
+#   resources:
+#     repositories:
+#       - repository: dependency-scan
+#         type: github
+#         name: arnica-io/dependency-scan
+#         endpoint: <your-github-service-connection>
+#         ref: refs/tags/v1
+#
+#   steps:
+#     - checkout: self
+#     - checkout: dependency-scan
+#     - template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
+#       parameters:
+#         repositoryUrl: $(Build.Repository.Uri)
+#         branch: $(Build.SourceBranchName)
+
+parameters:
+  - name: repositoryUrl
+    type: string
+    displayName: "Repository URL associated with the scan"
+
+  - name: branch
+    type: string
+    default: "main"
+    displayName: "Branch name associated with the scan"
+
+  - name: scanPath
+    type: string
+    default: "."
+    displayName: "Repository path to scan"
+
+  - name: apiBaseUrl
+    type: string
+    default: "https://api.app.arnica.io"
+    displayName: "Arnica API base URL"
+
+  - name: scanTimeoutSeconds
+    type: number
+    default: 900
+    displayName: "Maximum time to wait for scan completion (seconds)"
+
+  - name: onFindings
+    type: string
+    default: "fail"
+    values:
+      - fail
+      - alert
+      - pass
+    displayName: "Behavior when findings are detected"
+
+  - name: debug
+    type: boolean
+    default: false
+    displayName: "Enable verbose debug logs"
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "20.x"
+    displayName: "Setup Node.js"
+
+  - script: |
+      npm install -g pnpm@10.21.0
+    displayName: "Install pnpm"
+
+  - script: |
+      SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
+      cd "$SCAN_REPO_DIR"
+      pnpm install --frozen-lockfile
+    displayName: "Install scan dependencies"
+
+  - script: |
+      SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
+      cd "$SCAN_REPO_DIR"
+      export PATH="$SCAN_REPO_DIR/node_modules/.bin:$PATH"
+      node --require ts-node/register src/main-ado.ts
+    displayName: "Run Arnica Dependency Scan"
+    env:
+      INPUT_REPOSITORY_URL: ${{ parameters.repositoryUrl }}
+      INPUT_BRANCH: ${{ parameters.branch }}
+      INPUT_SCAN_PATH: ${{ parameters.scanPath }}
+      INPUT_API_BASE_URL: ${{ parameters.apiBaseUrl }}
+      INPUT_SCAN_TIMEOUT_SECONDS: ${{ parameters.scanTimeoutSeconds }}
+      INPUT_ON_FINDINGS: ${{ parameters.onFindings }}
+      INPUT_DEBUG: ${{ parameters.debug }}
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
