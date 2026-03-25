@@ -36,7 +36,7 @@ export class AzureDevOpsPlatform implements Platform {
   }
 
   getWorkspacePath(): string {
-    return process.env.BUILD_SOURCESDIRECTORY || process.env.SYSTEM_DEFAULTWORKINGDIRECTORY || "";
+    return process.env.BUILD_REPOSITORY_LOCALPATH || process.env.BUILD_SOURCESDIRECTORY || process.env.SYSTEM_DEFAULTWORKINGDIRECTORY || "";
   }
 
   async writeSummary(markdown: string): Promise<void> {
