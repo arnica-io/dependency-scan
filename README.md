@@ -142,12 +142,12 @@ Create an Arnica API key with only the SBOM scopes:
 
 ## Azure DevOps Pipelines
 
-The same scan logic is available as a reusable Azure DevOps pipeline template. Your Azure DevOps pipeline checks out this GitHub repository and runs the scan against your code.
+The same scan logic works in Azure DevOps via `npx` — no git clone, no service connections, no script downloads.
 
 ### Prerequisites (Azure DevOps)
 
-1. **GitHub Service Connection**: In your Azure DevOps project, go to **Project Settings > Service Connections > New > GitHub** and create a connection. Note the connection name — you'll use it as the `endpoint` value below.
-2. **ARNICA_API_TOKEN**: Add this as a secret variable to your pipeline, or create a **Variable Group** (e.g., `arnica-secrets`) containing it.
+1. **ARNICA_API_TOKEN**: Create a **Variable Group** named `arnica-secrets` in your Azure DevOps project (**Pipelines > Library**) containing the token as a secret variable.
+2. **Node.js 24+**: Add a `NodeTool@0` task to your pipeline.
 
 ### Quickstart (Azure DevOps)
 
@@ -160,55 +160,46 @@ trigger:
 pool:
   vmImage: "ubuntu-latest"
 
-resources:
-  repositories:
-    - repository: dependency-scan
-      type: github
-      name: arnica-io/dependency-scan
-      endpoint: <your-github-service-connection>  # Replace with your service connection name
-      ref: refs/tags/v1
-
 variables:
-  - group: arnica-secrets  # Variable group containing ARNICA_API_TOKEN
+  - group: arnica-secrets
 
 steps:
   - checkout: self
-  - checkout: dependency-scan
 
-  - template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
-    parameters:
-      repositoryUrl: $(Build.Repository.Uri)
-      branch: $(Build.SourceBranchName)
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "24.x"
+
+  - script: npx @arnica-io/dependency-scan@1
+    displayName: "Arnica Dependency Scan"
+    env:
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
 ```
 
-### Template Parameters
+The scan auto-detects the Azure DevOps environment and reads the repository URL and branch from built-in pipeline variables.
 
-| Name                 | Required | Default                     | Description                                                   |
-| -------------------- | :------: | --------------------------- | ------------------------------------------------------------- |
-| `repositoryUrl`      |   Yes    |                             | Repository URL associated with the scan                       |
-| `branch`             |   No     | `main`                      | Branch to associate with the scan                             |
-| `scanPath`           |   No     | `.`                         | Directory path to scan (e.g., `.` or `services/api`)          |
-| `apiBaseUrl`         |   No     | `https://api.app.arnica.io` | Arnica API base URL                                           |
-| `scanTimeoutSeconds` |   No     | `900`                       | Timeout (seconds) to wait for scan completion                 |
-| `onFindings`         |   No     | `fail`                      | Behavior when findings are detected: `fail`, `alert`, `pass`  |
-| `debug`              |   No     | `false`                     | Enable verbose debug logs                                     |
+### Environment Variables
 
-### Pipeline Outputs
+All configuration is via environment variables in the pipeline step:
 
-The template sets the following output variables (accessible via `##vso[task.setvariable]`):
-
-- **status**: Final status — `Success`, `Failure`, `Error`, `Skipped`, or `Timeout`.
-- **scan_id**: Arnica scan identifier.
+| Name                       | Required | Default                     | Description                                                   |
+| -------------------------- | :------: | --------------------------- | ------------------------------------------------------------- |
+| `ARNICA_API_TOKEN`         |   Yes    |                             | Arnica API token                                              |
+| `INPUT_SCAN_PATH`          |   No     | `.`                         | Directory path to scan (e.g., `services/api`)                 |
+| `INPUT_API_BASE_URL`       |   No     | `https://api.app.arnica.io` | Arnica API base URL                                           |
+| `INPUT_SCAN_TIMEOUT_SECONDS` |  No    | `900`                       | Timeout (seconds) to wait for scan completion                 |
+| `INPUT_ON_FINDINGS`        |   No     | `fail`                      | Behavior when findings are detected: `fail`, `alert`, `pass`  |
+| `INPUT_DEBUG`              |   No     | `false`                     | Enable verbose debug logs                                     |
 
 ### Example: Scan Subdirectory, Alert Only
 
 ```yaml
-- template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
-  parameters:
-    repositoryUrl: $(Build.Repository.Uri)
-    branch: $(Build.SourceBranchName)
-    scanPath: "services/payments"
-    onFindings: "alert"
+- script: npx @arnica-io/dependency-scan@1
+  displayName: "Arnica Dependency Scan"
+  env:
+    ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+    INPUT_SCAN_PATH: "services/payments"
+    INPUT_ON_FINDINGS: "alert"
 ```
 
 ### Where to View Reports (Azure DevOps)
