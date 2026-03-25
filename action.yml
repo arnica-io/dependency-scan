@@ -81,4 +81,4 @@ runs:
         (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
         cd "$GITHUB_ACTION_PATH"
         export PATH="$GITHUB_ACTION_PATH/node_modules/.bin:$PATH"
-        ts-node src/main.ts
+        node --require ts-node/register src/main.ts
