@@ -1,0 +1,38 @@
+name: Publish to GitHub Packages
+
+on:
+  push:
+    branches: [add-devops-pipeline-support]
+
+concurrency:
+  group: publish-package
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642195f882660b1353c7b93 # v4.4.0
+        with:
+          node-version: "24"
+          registry-url: "https://npm.pkg.github.com"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Set pre-release version
+        env:
+          GH_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          npm version "0.0.0-dev.${GH_RUN_NUMBER}.${SHORT_SHA}" --no-git-tag-version
+
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
