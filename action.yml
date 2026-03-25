@@ -30,10 +30,6 @@ inputs:
     description: Behavior when findings are detected (Failure). One of fail|alert|pass
     required: false
     default: fail
-  cdxgen-version:
-    description: Version of @cyclonedx/cdxgen to install
-    required: false
-    default: "11.3.2"
   debug:
     description: Enable verbose API response debug logs
     required: false

@@ -3,7 +3,7 @@ blockExoticSubdeps: true
 minimumReleaseAge: 4320
 
 onlyBuiltDependencies:
-  - '@appthreat/sqlite3'
+  - sqlite3
 
 strictDepBuilds: true
 
