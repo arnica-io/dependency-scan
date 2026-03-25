@@ -17,14 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "24"
           registry-url: "https://npm.pkg.github.com"
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run build
+      - run: pnpm run build
 
       - name: Set pre-release version
         env:
@@ -33,6 +35,6 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           npm version "0.0.0-dev.${GH_RUN_NUMBER}.${SHORT_SHA}" --no-git-tag-version
 
-      - run: npm publish --access public
+      - run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
