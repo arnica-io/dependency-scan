@@ -30,10 +30,6 @@ inputs:
     description: Behavior when findings are detected (Failure). One of fail|alert|pass
     required: false
     default: fail
-  cdxgen-version:
-    description: Version of @cyclonedx/cdxgen to install
-    required: false
-    default: "11.3.2"
   debug:
     description: Enable verbose API response debug logs
     required: false
@@ -62,13 +58,7 @@ runs:
       run: |
         (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
         cd "$GITHUB_ACTION_PATH"
-        npm ci
-
-    - name: Install cdxgen
-      shell: bash
-      run: |
-        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
-        npm install -g "@cyclonedx/cdxgen@${{ inputs.cdxgen-version }}"
+        pnpm install --frozen-lockfile
 
     - name: Run Arnica dependency scan
       id: arnica
@@ -86,4 +76,5 @@ runs:
       run: |
         (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
         cd "$GITHUB_ACTION_PATH"
-        npx ts-node src/main.ts
+        export PATH="$GITHUB_ACTION_PATH/node_modules/.bin:$PATH"
+        node --require ts-node/register src/main.ts

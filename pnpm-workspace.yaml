@@ -1,0 +1,10 @@
+blockExoticSubdeps: true
+
+minimumReleaseAge: 4320
+
+onlyBuiltDependencies:
+  - sqlite3
+
+strictDepBuilds: true
+
+trustPolicy: no-downgrade
