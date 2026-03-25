@@ -49,6 +49,17 @@ jobs:
           echo "Status: ${{ steps.arnica.outputs.status }}"
 ```
 
+### Pinning to a Commit SHA
+
+While Arnica's action tags are immutable, as a general best practice we recommend pinning all GitHub Actions to a full commit SHA rather than a tag. SHA pinning ensures your workflows are deterministic and aligned with [GitHub's security hardening guidelines](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
+
+```yaml
+# Best practice – pinned to commit SHA
+uses: arnica-io/dependency-scan@<sha> # v1.0.22
+```
+
+The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
+
 ### Recommended Workflow Triggers
 
 For complete security coverage and accurate issue lifecycle tracking:

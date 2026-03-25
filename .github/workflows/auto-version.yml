@@ -77,10 +77,13 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin main
+          git fetch origin tag "${TAG_NAME}" --no-tags
           git checkout main
           git reset --hard origin/main
 
-          sed -i -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+|\1${TAG_NAME}|g" README.md
+          RELEASE_SHA=$(git rev-list -n 1 "${TAG_NAME}")
+
+          sed -i -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+([ ]*#[^\n]*)?|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
 
           if git diff --quiet -- README.md; then
             echo "README.md already up to date for ${TAG_NAME}."
@@ -93,5 +96,5 @@ jobs:
 
           {
             echo "### README Updated"
-            echo "Version references updated to \`${TAG_NAME}\`"
+            echo "Version references pinned to \`${RELEASE_SHA}\` (${TAG_NAME})"
           } >> "$GITHUB_STEP_SUMMARY"
