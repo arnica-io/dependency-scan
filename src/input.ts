@@ -24,14 +24,16 @@ export interface DependencyScanInput {
 export function getValidatedInput(platform: Platform): DependencyScanInput {
   const workspacePath = platform.getWorkspacePath();
 
+  const scanPath = process.env.INPUT_SCAN_PATH || "";
+
   const input: DependencyScanInput = {
-    repoUrl: process.env.INPUT_REPOSITORY_URL || "",
-    branch: process.env.INPUT_BRANCH || "",
-    scanPath: process.env.INPUT_SCAN_PATH || "",
+    repoUrl: process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || "",
+    branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "",
+    scanPath,
     repoScanPath: path.normalize(
-      path.join(workspacePath, process.env.INPUT_SCAN_PATH || "")
+      path.join(workspacePath, scanPath)
     ),
-    apiBaseUrl: process.env.INPUT_API_BASE_URL || "",
+    apiBaseUrl: process.env.INPUT_API_BASE_URL || "https://api.app.arnica.io",
     scanTimeoutSeconds: parseInt(
       process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
       10
