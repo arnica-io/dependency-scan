@@ -6,7 +6,7 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^2.0.3",
     "@actions/exec": "^1.1.1",
     "@cyclonedx/cdxgen": "11.3.2"
   },
