@@ -147,8 +147,7 @@ The same scan logic works in Azure DevOps via `npx` — no git clone, no service
 ### Prerequisites (Azure DevOps)
 
 1. **ARNICA_API_TOKEN**: Create a **Variable Group** named `arnica-secrets` in your Azure DevOps project (**Pipelines > Library**) containing the token as a secret variable.
-2. **GH_PACKAGES_TOKEN**: Add a GitHub Personal Access Token with `read:packages` scope to the same variable group. This is needed to pull the package from GitHub Packages.
-3. **Node.js 24+**: Add a `NodeTool@0` task to your pipeline.
+2. **Node.js 24+**: Add a `NodeTool@0` task to your pipeline.
 
 ### Quickstart (Azure DevOps)
 
@@ -171,12 +170,8 @@ steps:
     inputs:
       versionSpec: "24.x"
 
-  - script: |
-      echo "@arnica-io:registry=https://npm.pkg.github.com" > ~/.npmrc
-      echo "//npm.pkg.github.com/:_authToken=${GH_PACKAGES_TOKEN}" >> ~/.npmrc
+  - script: echo "@arnica-io:registry=https://npm.pkg.github.com" > ~/.npmrc
     displayName: "Configure GitHub Packages registry"
-    env:
-      GH_PACKAGES_TOKEN: $(GH_PACKAGES_TOKEN)
 
   - script: npx @arnica-io/dependency-scan@1
     displayName: "Arnica Dependency Scan"
@@ -193,7 +188,6 @@ All configuration is via environment variables in the pipeline step:
 | Name                       | Required | Default                     | Description                                                   |
 | -------------------------- | :------: | --------------------------- | ------------------------------------------------------------- |
 | `ARNICA_API_TOKEN`         |   Yes    |                             | Arnica API token                                              |
-| `GH_PACKAGES_TOKEN`        |   Yes    |                             | GitHub PAT with `read:packages` scope (for registry access)   |
 | `INPUT_SCAN_PATH`          |   No     | `.`                         | Directory path to scan (e.g., `services/api`)                 |
 | `INPUT_API_BASE_URL`       |   No     | `https://api.app.arnica.io` | Arnica API base URL                                           |
 | `INPUT_SCAN_TIMEOUT_SECONDS` |  No    | `900`                       | Timeout (seconds) to wait for scan completion                 |
