@@ -35,6 +35,6 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           npm version "0.0.0-dev.${GH_RUN_NUMBER}.${SHORT_SHA}" --no-git-tag-version
 
-      - run: pnpm publish --access public --no-git-checks
+      - run: pnpm publish --access public --no-git-checks --tag dev
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
