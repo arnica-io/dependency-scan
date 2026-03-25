@@ -49,6 +49,20 @@ jobs:
           echo "Status: ${{ steps.arnica.outputs.status }}"
 ```
 
+### Pinning to a Commit SHA
+
+Arnica recommends referencing this action by its full commit SHA rather than a tag or branch name. SHA pinning protects your workflows against supply-chain attacks where a tag or branch could be moved to point at malicious code.
+
+```yaml
+# Recommended – pinned to an immutable commit SHA
+uses: arnica-io/dependency-scan@<sha> # v1.0.22
+
+# Not recommended – mutable tag reference
+uses: arnica-io/dependency-scan@v1.0.22
+```
+
+The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
+
 ### Recommended Workflow Triggers
 
 For complete security coverage and accurate issue lifecycle tracking:
