@@ -51,14 +51,11 @@ jobs:
 
 ### Pinning to a Commit SHA
 
-Arnica recommends referencing this action by its full commit SHA rather than a tag or branch name. SHA pinning protects your workflows against supply-chain attacks where a tag or branch could be moved to point at malicious code.
+While Arnica's action tags are immutable, as a general best practice we recommend pinning all GitHub Actions to a full commit SHA rather than a tag. SHA pinning ensures your workflows are deterministic and aligned with [GitHub's security hardening guidelines](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
 
 ```yaml
-# Recommended – pinned to an immutable commit SHA
+# Best practice – pinned to commit SHA
 uses: arnica-io/dependency-scan@<sha> # v1.0.22
-
-# Not recommended – mutable tag reference
-uses: arnica-io/dependency-scan@v1.0.22
 ```
 
 The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
