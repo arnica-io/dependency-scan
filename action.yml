@@ -71,4 +71,5 @@ runs:
         cd "$ACTION_PATH"
         pnpm install --frozen-lockfile
         pnpm run build
+        export PATH="$ACTION_PATH/node_modules/.bin:$PATH"
         node "$ACTION_PATH/dist/cli.js"
