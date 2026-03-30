@@ -60,6 +60,10 @@ uses: arnica-io/dependency-scan@4aa5148d03e13b5082a5d1a0c8b00ad7946f8bb3 # v1.0.
 
 The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
 
+### Package Integrity
+
+All npm packages are published with [SLSA provenance](https://docs.npmjs.com/generating-provenance-statements), providing cryptographic proof that each build originated from this repository. npm versions are immutable — once published, they cannot be modified or overwritten.
+
 ### Recommended Workflow Triggers
 
 For complete security coverage and accurate issue lifecycle tracking:
@@ -170,16 +174,17 @@ steps:
     inputs:
       versionSpec: "24.x"
 
-  - script: echo "@arnica-io:registry=https://npm.pkg.github.com" > ~/.npmrc
-    displayName: "Configure GitHub Packages registry"
-
-  - script: npx @arnica-io/dependency-scan@1
+  - script: npx @arnica-io/dependency-scan@1.0.24
     displayName: "Arnica Dependency Scan"
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
 ```
 
 The scan auto-detects the Azure DevOps environment and reads the repository URL and branch from built-in pipeline variables.
+
+### Pinning to a Specific Version
+
+The examples above use an exact version pin (e.g., `@1.0.24`). This README is automatically updated with the latest version on every release.
 
 ### Environment Variables
 
@@ -197,7 +202,7 @@ All configuration is via environment variables in the pipeline step:
 ### Example: Scan Subdirectory, Alert Only
 
 ```yaml
-- script: npx @arnica-io/dependency-scan@1
+- script: npx @arnica-io/dependency-scan@1.0.24
   displayName: "Arnica Dependency Scan"
   env:
     ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)

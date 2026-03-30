@@ -1,11 +1,11 @@
-name: Publish to GitHub Packages
+name: Publish to npm
 
 on:
   push:
-    branches: [add-devops-pipeline-support]
+    branches: [main]
 
 concurrency:
-  group: publish-package
+  group: publish-npm
   cancel-in-progress: true
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
@@ -22,9 +22,9 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "24"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
 
       - run: pnpm run build
 
@@ -37,4 +37,4 @@ jobs:
 
       - run: pnpm publish --access public --no-git-checks --tag dev
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

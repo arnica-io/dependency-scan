@@ -24,11 +24,11 @@ export interface DependencyScanInput {
 export function getValidatedInput(platform: Platform): DependencyScanInput {
   const workspacePath = platform.getWorkspacePath();
 
-  const scanPath = process.env.INPUT_SCAN_PATH || "";
+  const scanPath = process.env.INPUT_SCAN_PATH || ".";
 
   const input: DependencyScanInput = {
     repoUrl: process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || "",
-    branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "",
+    branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "main",
     scanPath,
     repoScanPath: path.normalize(
       path.join(workspacePath, scanPath)

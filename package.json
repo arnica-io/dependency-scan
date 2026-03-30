@@ -11,11 +11,12 @@
     "README.md"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/arnica-io/dependency-scan.git"
+    "url": "git+https://github.com/arnica-io/dependency-scan.git"
   },
   "packageManager": "pnpm@9.15.4",
   "scripts": {
@@ -31,5 +32,18 @@
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "types": "./dist/cli.d.ts",
+  "bugs": {
+    "url": "https://github.com/arnica-io/dependency-scan/issues"
+  },
+  "homepage": "https://github.com/arnica-io/dependency-scan#readme"
 }

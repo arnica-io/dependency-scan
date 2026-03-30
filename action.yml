@@ -44,27 +44,15 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Setup pnpm
-      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-      with:
-        run_install: false
-        version: 10.21.0
-
     - name: Install node
-      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-
-    - name: Install dependencies
-      shell: bash
-      run: |
-        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
-        cd "$GITHUB_ACTION_PATH"
-        pnpm install --frozen-lockfile
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version: "24"
 
     - name: Run Arnica dependency scan
       id: arnica
       shell: bash
       env:
-        # In composite actions, @actions/core looks for inputs as environment variables with the INPUT_ prefix
         INPUT_REPOSITORY_URL: ${{ inputs.repository-url }}
         INPUT_BRANCH: ${{ inputs.branch }}
         INPUT_SCAN_PATH: ${{ inputs.scan-path }}
@@ -73,8 +61,4 @@ runs:
         INPUT_API_TOKEN: ${{ inputs.api-token }}
         INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
         INPUT_DEBUG: ${{ inputs.debug }}
-      run: |
-        (set -o igncr) 2>/dev/null && set -o igncr; : # Windows/Cygwin CRLF compat
-        cd "$GITHUB_ACTION_PATH"
-        export PATH="$GITHUB_ACTION_PATH/node_modules/.bin:$PATH"
-        node --require ts-node/register src/main.ts
+      run: npx @arnica-io/dependency-scan@1.0.24
