@@ -49,6 +49,10 @@ runs:
       with:
         node-version: "24"
 
+    # Build and run from the action checkout so PRs and new tags work before the version exists on npm.
+    - name: Install pnpm
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
     - name: Run Arnica dependency scan
       id: arnica
       shell: bash
@@ -61,4 +65,10 @@ runs:
         INPUT_API_TOKEN: ${{ inputs.api-token }}
         INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
         INPUT_DEBUG: ${{ inputs.debug }}
-      run: npx @arnica-io/dependency-scan@1.0.24
+      run: |
+        set -euo pipefail
+        ACTION_PATH="${{ github.action_path }}"
+        cd "$ACTION_PATH"
+        pnpm install --frozen-lockfile
+        pnpm run build
+        node "$ACTION_PATH/dist/cli.js"

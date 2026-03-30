@@ -123,15 +123,12 @@ jobs:
           # Update npm version pins in README (e.g., @arnica-io/dependency-scan@1.0.24 → @1.0.25)
           sed -i -E "s|@arnica-io/dependency-scan@[0-9]+\.[0-9]+\.[0-9]+|@arnica-io/dependency-scan@${NEW_VERSION}|g" README.md
 
-          # Update npx version pin in action.yml to exact version
-          sed -i -E "s|@arnica-io/dependency-scan@[0-9]+\.[0-9]+\.[0-9]+|@arnica-io/dependency-scan@${NEW_VERSION}|g" action.yml
-
-          if git diff --quiet -- README.md action.yml; then
+          if git diff --quiet -- README.md; then
             echo "Files already up to date for ${TAG_NAME}."
             exit 0
           fi
 
-          git add README.md action.yml
+          git add README.md
           git commit -m "docs: update version references to ${TAG_NAME} [skip ci]"
           git push origin main
 

@@ -21,7 +21,9 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "scan": "node dist/cli.js",
+    "test": "pnpm run typecheck"
   },
   "dependencies": {
     "@actions/core": "^2.0.3",
