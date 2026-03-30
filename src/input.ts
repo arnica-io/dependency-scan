@@ -26,6 +26,11 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
 
   const scanPath = process.env.INPUT_SCAN_PATH || ".";
 
+  const scanTimeoutSeconds = parseInt(
+    process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
+    10
+  );
+
   const input: DependencyScanInput = {
     repoUrl: process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || "",
     branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "main",
@@ -34,32 +39,42 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
       path.join(workspacePath, scanPath)
     ),
     apiBaseUrl: process.env.INPUT_API_BASE_URL || "https://api.app.arnica.io",
-    scanTimeoutSeconds: parseInt(
-      process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
-      10
-    ),
+    scanTimeoutSeconds,
     apiToken: process.env.INPUT_API_TOKEN || process.env.ARNICA_API_TOKEN || "",
     onFindings: process.env.INPUT_ON_FINDINGS || "fail",
     debug: process.env.INPUT_DEBUG === "true",
   };
 
   if (input.debug) {
+    // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): Never log API token value; mask in structured debug output
+    const { apiToken: _token, ...inputForLog } = input;
     platform.info(`Workspace path: ${workspacePath}`);
-    platform.info(`Input: ${JSON.stringify(input, null, 2)}`);
+    platform.info(
+      `Input: ${JSON.stringify(
+        { ...inputForLog, apiToken: _token ? "(redacted)" : "(empty)" },
+        null,
+        2
+      )}`
+    );
   }
 
   if (!onFindings.includes(input.onFindings)) {
-    platform.setFailed(
-      `Invalid on-findings value: '${
-        input.onFindings
-      }'. Must be one of: ${onFindings.join(", ")}`
-    );
+    const msg = `Invalid on-findings value: '${input.onFindings}'. Must be one of: ${onFindings.join(", ")}`;
+    platform.setFailed(msg);
+    throw new Error(msg);
+  }
+
+  if (!Number.isFinite(scanTimeoutSeconds) || scanTimeoutSeconds < 1) {
+    const msg = `Invalid scan-timeout-seconds: must be a positive integer`;
+    platform.setFailed(msg);
+    throw new Error(msg);
   }
 
   if (!input.apiToken) {
-    platform.setFailed(
-      "API token is missing. Pass env ARNICA_API_TOKEN from a secret."
-    );
+    const msg =
+      "API token is missing. Pass env ARNICA_API_TOKEN from a secret.";
+    platform.setFailed(msg);
+    throw new Error(msg);
   }
 
   return input;

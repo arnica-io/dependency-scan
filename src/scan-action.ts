@@ -235,10 +235,14 @@ export class DependencyScanAction {
           };
       }
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred";
+      this.platform.error(
+        err instanceof Error ? err.stack || err.message : String(err)
+      );
       return {
         status: "Error",
-        message:
-          err instanceof Error ? err.message : "An unknown error occurred",
+        message,
       };
     }
   }

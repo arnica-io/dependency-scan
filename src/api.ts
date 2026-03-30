@@ -84,7 +84,8 @@ export class SbomApiClient {
   ) {}
 
   private static async getResponseBody<T>(
-    response: Response
+    response: Response,
+    logger: ApiLogger
   ): Promise<T | undefined> {
     const text = await response.text();
 
@@ -95,6 +96,8 @@ export class SbomApiClient {
     try {
       return JSON.parse(text) as T;
     } catch {
+      // Agentic Rule (ARNIE_API_JSON_PARSING): Log parse failure without echoing response body (may contain secrets/HTML)
+      logger.error("Failed to parse API response as JSON");
       return undefined;
     }
   }
@@ -140,7 +143,10 @@ export class SbomApiClient {
       if (response.ok) {
         result = {
           success: true,
-          data: (await SbomApiClient.getResponseBody(response)) as T,
+          data: (await SbomApiClient.getResponseBody(
+            response,
+            this.options.logger
+          )) as T,
         };
       } else {
         result = {
@@ -148,8 +154,12 @@ export class SbomApiClient {
           data: {
             status: response.status,
             message:
-              (await SbomApiClient.getResponseBody<ApiErrorResponse>(response))
-                ?.message ||
+              (
+                await SbomApiClient.getResponseBody<ApiErrorResponse>(
+                  response,
+                  this.options.logger
+                )
+              )?.message ||
               response.statusText ||
               error ||
               "Unknown error",
