@@ -1,13 +1,16 @@
 # Arnica Dependency Security Scan - Azure DevOps Pipeline Template
 #
-# This template scans a repository for dependency vulnerabilities using cdxgen
-# and the Arnica API. It reuses the same TypeScript scan logic as the GitHub
-# Action, with an Azure DevOps platform adapter.
+# Runs the published npm package (@arnica-io/dependency-scan) via npx against the
+# checked-out repository (use checkout: self before this template).
 #
 # Prerequisites:
-#   1. A GitHub service connection configured in your Azure DevOps project
-#      (Project Settings > Service Connections > New > GitHub)
-#   2. ARNICA_API_TOKEN set as a pipeline variable or variable group secret
+#   1. checkout: self (repository to scan)
+#   2. ARNICA_API_TOKEN as a pipeline variable or variable group secret
+#   3. If you load this file from GitHub: a service connection + repository resource
+#      (see azure-pipelines/examples/example-pipeline.yml)
+#
+# For a reproducible install from source (pnpm lockfile) instead of npx, see the
+# Azure DevOps section in README.md.
 #
 # Usage:
 #   resources:
@@ -16,11 +19,11 @@
 #         type: github
 #         name: arnica-io/dependency-scan
 #         endpoint: <your-github-service-connection>
-#         ref: refs/tags/v1
+#         ref: refs/tags/v1.0.24
 #
 #   steps:
 #     - checkout: self
-#     - checkout: dependency-scan
+#     - checkout: dependency-scan   # only so the template path resolves
 #     - template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
 #       parameters:
 #         repositoryUrl: $(Build.Repository.Uri)
@@ -65,6 +68,11 @@ parameters:
     default: false
     displayName: "Enable verbose debug logs"
 
+  - name: npmPackageVersion
+    type: string
+    default: "1.0.24"
+    displayName: "Published @arnica-io/dependency-scan version (npm)"
+
 steps:
   - task: NodeTool@0
     inputs:
@@ -73,22 +81,11 @@ steps:
 
   - script: |
       set -euo pipefail
-      SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
-      cd "$SCAN_REPO_DIR"
-      corepack enable
-      corepack prepare pnpm@9.15.4 --activate
-      pnpm install --frozen-lockfile
-      pnpm run build
-    displayName: "Install dependencies and build scan CLI (lockfile-pinned)"
-
-  - script: |
-      set -euo pipefail
-      SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
-      export PATH="$SCAN_REPO_DIR/node_modules/.bin:$PATH"
-      cd "$SCAN_REPO_DIR"
-      node dist/cli.js
-    displayName: "Run Arnica Dependency Scan"
+      cd "$(Build.SourcesDirectory)"
+      npx --yes "@arnica-io/dependency-scan@${NPM_PACKAGE_VERSION}"
+    displayName: "Arnica Dependency Scan (npm package)"
     env:
+      NPM_PACKAGE_VERSION: ${{ parameters.npmPackageVersion }}
       INPUT_REPOSITORY_URL: ${{ parameters.repositoryUrl }}
       INPUT_BRANCH: ${{ parameters.branch }}
       INPUT_SCAN_PATH: ${{ parameters.scanPath }}

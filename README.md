@@ -152,7 +152,7 @@ The same scan logic runs on Azure DevOps. For **reproducible installs** (locked 
 
 1. **ARNICA_API_TOKEN**: Create a **Variable Group** named `arnica-secrets` in your Azure DevOps project (**Pipelines > Library**) containing the token as a secret variable.
 2. **Node.js 24+**: Add a `NodeTool@0` task (or match the version in the template below).
-3. **Optional – GitHub service connection**: Only if you use `checkout: dependency-scan` from GitHub (see `azure-pipelines/templates/dependency-scan.yml`).
+3. **GitHub service connection** (optional): Only if you load `azure-pipelines/templates/dependency-scan.yml` from the `arnica-io/dependency-scan` repo. That checkout is for the **template file**; the template runs the **published npm package** via `npx`, not a local build.
 
 ### Quickstart (Azure DevOps, lockfile-pinned)
 

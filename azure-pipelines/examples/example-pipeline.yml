@@ -31,9 +31,12 @@ steps:
   - checkout: self
   - checkout: dependency-scan
 
+  # checkout: dependency-scan is only required so the template YAML can load from @dependency-scan;
+  # the scan runs the published npm package (npx), not a build of that repo.
   - template: azure-pipelines/templates/dependency-scan.yml@dependency-scan
     parameters:
       repositoryUrl: $(Build.Repository.Uri)
       branch: $(Build.SourceBranchName)
       scanPath: "."
       onFindings: "fail"
+      npmPackageVersion: "1.0.24"
