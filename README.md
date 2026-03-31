@@ -178,7 +178,7 @@ steps:
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)"
-      npx --yes "@arnica-io/dependency-scan@3354107798522d8cf4ea7906b5fa9c79da0407c4 # v1.0.27
+      npx --yes "@arnica-io/dependency-scan@1.0.27"
     displayName: Arnica dependency scan
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)

@@ -85,11 +85,11 @@ jobs:
 
           RELEASE_SHA=$(git rev-list -n 1 "${TAG_NAME}")
 
-          # Update GitHub Action SHA pins in README
-          sed -i -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+([ ]*#[^\n]*)?|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
+          # Update GitHub Action SHA pins in README (`uses:` entries only)
+          sed -i -E "s|^([[:space:]]*uses:[[:space:]]+arnica-io/dependency-scan@)[^[:space:]]+([[:space:]]*#[^\n]*)?$|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
 
-          # Update npm version pins in README (e.g., @arnica-io/dependency-scan@1.0.24 → @1.0.25)
-          sed -i -E "s|@arnica-io/dependency-scan@[0-9]+\.[0-9]+\.[0-9]+|@arnica-io/dependency-scan@${NEW_VERSION}|g" README.md
+          # Update npm version pins in README (`npx` entries only)
+          sed -i -E "s|(^[[:space:]]*npx[[:space:]]+--yes[[:space:]]+\"@arnica-io/dependency-scan@)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${NEW_VERSION}\2|g" README.md
 
           if git diff --quiet -- README.md; then
             echo "Files already up to date for ${TAG_NAME}."
