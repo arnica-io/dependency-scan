@@ -64,6 +64,14 @@ export class DependencyScanAction {
     });
   }
 
+  private logStartupPreflight(): void {
+    this.platform.info(
+      `Preflight: apiBaseUrl=${this.input.apiBaseUrl}, repositoryUrl=${this.input.repoUrl}, branch=${this.input.branch}, scanPath=${this.input.scanPath}, token=${
+        this.input.apiToken ? "(present)" : "(empty)"
+      }`
+    );
+  }
+
   private async generateSbom(): Promise<Sbom | undefined> {
     await this.platform.runCommand("cdxgen", ["."], {
       cwd: this.input.repoScanPath,
@@ -122,6 +130,8 @@ export class DependencyScanAction {
 
   private async tryRun(): Promise<DependencyScanRunResult> {
     try {
+      this.logStartupPreflight();
+
       /****** Generate SBOM ******/
       this.platform.info("Generating SBOM with cdxgen...");
       const sbom = await this.generateSbom();
@@ -154,13 +164,17 @@ export class DependencyScanAction {
       });
 
       if (!startScanResponse.success) {
+        const authHint =
+          startScanResponse.data.status === 403
+            ? " Hint: verify token scope/tenant access and repository authorization for the selected API base URL."
+            : "";
         return {
           status: "Error",
           message: `Failed to start scan with HTTP status code: ${
             startScanResponse.data.status
           }, message: ${
             startScanResponse.data.message
-          }, full response: ${JSON.stringify(startScanResponse, null, 2)}`,
+          }, full response: ${JSON.stringify(startScanResponse, null, 2)}${authHint}`,
         };
       }
 
