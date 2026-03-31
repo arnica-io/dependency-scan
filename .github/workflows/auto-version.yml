@@ -20,10 +20,18 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 #v3.0.0
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Configure git identity
         run: |
@@ -34,7 +42,7 @@ jobs:
         id: tagger
         uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           tag_prefix: v
           release_branches: main
           default_bump: patch
@@ -44,6 +52,8 @@ jobs:
       - name: Create GitHub Release
         if: steps.tagger.outputs.new_tag
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.0
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           tag_name: ${{ steps.tagger.outputs.new_tag }}
           name: Arnica Dependency Security Scan - ${{ steps.tagger.outputs.new_tag }}
@@ -59,20 +69,14 @@ jobs:
           git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
           git push origin "$MAJOR_TAG" --force
 
-      - name: Generate App token
+      - name: Ensure main is checked out
         if: steps.tagger.outputs.new_tag
-        id: app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 #v3.0.0
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Checkout main with App token
-        if: steps.tagger.outputs.new_tag
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
-        with:
-          ref: main
-          token: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
 
       - name: Update version references on main
         if: steps.tagger.outputs.new_tag
