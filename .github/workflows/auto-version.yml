@@ -2,7 +2,8 @@ name: Auto Version on Main
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths-ignore:
       - "README.md"
 
