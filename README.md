@@ -119,7 +119,7 @@ Scan a subdirectory and alert (do not fail) on policy violations:
 ```yaml
 - name: Generate SBOM and scan with Arnica
   id: arnica
-  uses: arnica-io/dependency-scan@af8ee31b1173277957ff3b4b408a0c9e7f5f7507 # v1.1.2
+  uses: arnica-io/dependency-scan@af8ee31b1173277957ff3b4b408a0c9e7f5f7507 # v1.1.0
   env:
     ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
   with:
