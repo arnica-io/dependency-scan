@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -54,26 +55,58 @@ jobs:
           git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
           git push origin "$MAJOR_TAG" --force
 
+      - name: Setup pnpm
+        if: steps.tagger.outputs.new_tag
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - name: Setup Node.js
+        if: steps.tagger.outputs.new_tag
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        if: steps.tagger.outputs.new_tag
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: steps.tagger.outputs.new_tag
+        run: pnpm run build
+
+      - name: Set npm version from tag
+        if: steps.tagger.outputs.new_tag
+        env:
+          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
+        run: npm version "${NEW_VERSION}" --no-git-tag-version
+
+      - name: Publish to npm
+        if: steps.tagger.outputs.new_tag
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+
       - name: Generate App token
         if: steps.tagger.outputs.new_tag
         id: app-token
-        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v1.12.0
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 #v3.0.0
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout main with App token
         if: steps.tagger.outputs.new_tag
-        uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Update README version on main
+      - name: Update version references on main
         if: steps.tagger.outputs.new_tag
         shell: bash
         env:
           TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
         run: |
           set -euo pipefail
           git fetch origin main
@@ -83,18 +116,23 @@ jobs:
 
           RELEASE_SHA=$(git rev-list -n 1 "${TAG_NAME}")
 
+          # Update GitHub Action SHA pins in README
           sed -i -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+([ ]*#[^\n]*)?|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
 
+          # Update npm version pins in README (e.g., @arnica-io/dependency-scan@1.0.24 → @1.0.25)
+          sed -i -E "s|@arnica-io/dependency-scan@[0-9]+\.[0-9]+\.[0-9]+|@arnica-io/dependency-scan@${NEW_VERSION}|g" README.md
+
           if git diff --quiet -- README.md; then
-            echo "README.md already up to date for ${TAG_NAME}."
+            echo "Files already up to date for ${TAG_NAME}."
             exit 0
           fi
 
           git add README.md
-          git commit -m "docs: update README usage to ${TAG_NAME} [skip ci]"
+          git commit -m "docs: update version references to ${TAG_NAME} [skip ci]"
           git push origin main
 
           {
-            echo "### README Updated"
-            echo "Version references pinned to \`${RELEASE_SHA}\` (${TAG_NAME})"
+            echo "### Version References Updated"
+            echo "- GitHub Action SHA: \`${RELEASE_SHA}\` (${TAG_NAME})"
+            echo "- npm version: \`${NEW_VERSION}\`"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,9 +1,29 @@
 {
   "name": "@arnica-io/dependency-scan",
   "version": "1.0.0",
-  "private": true,
+  "description": "Arnica dependency security scan for GitHub Actions and Azure DevOps pipelines",
+  "main": "dist/cli.js",
+  "bin": {
+    "arnica-scan": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arnica-io/dependency-scan.git"
+  },
+  "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "build": "tsc --noEmit"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "scan": "node dist/cli.js",
+    "test": "pnpm run typecheck"
   },
   "dependencies": {
     "@actions/core": "^2.0.3",
@@ -12,7 +32,19 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "types": "./dist/cli.d.ts",
+  "bugs": {
+    "url": "https://github.com/arnica-io/dependency-scan/issues"
+  },
+  "homepage": "https://github.com/arnica-io/dependency-scan#readme"
 }

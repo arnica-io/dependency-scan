@@ -1,5 +1,4 @@
 import { Sbom } from "./sbom";
-import * as core from "@actions/core";
 
 export interface StartSbomScanRequest {
   readonly repositoryUrl: string;
@@ -65,10 +64,16 @@ export type ApiResponse<T, U = ApiErrorResponse> =
   | { success: false; data: U };
 export type UploadSbomResponse = ApiResponse<void>;
 
+export interface ApiLogger {
+  info(message: string): void;
+  error(message: string): void;
+}
+
 export interface ApiOptions {
   readonly timeoutSeconds: number;
   readonly maxRetries: number;
   readonly debug: boolean;
+  readonly logger: ApiLogger;
 }
 
 export class SbomApiClient {
@@ -79,7 +84,8 @@ export class SbomApiClient {
   ) {}
 
   private static async getResponseBody<T>(
-    response: Response
+    response: Response,
+    logger: ApiLogger
   ): Promise<T | undefined> {
     const text = await response.text();
 
@@ -90,6 +96,8 @@ export class SbomApiClient {
     try {
       return JSON.parse(text) as T;
     } catch {
+      // Agentic Rule (ARNIE_API_JSON_PARSING): Log only; never echo body (secrets/HTML).
+      logger.error("Failed to parse API response as JSON");
       return undefined;
     }
   }
@@ -103,7 +111,7 @@ export class SbomApiClient {
     let error: string | undefined;
 
     if (this.options.debug) {
-      core.info(
+      this.options.logger.info(
         `Fetching ${options.method || "GET"} ${url} with body: ${JSON.stringify(
           options.body || "",
           null,
@@ -127,7 +135,7 @@ export class SbomApiClient {
           e instanceof Error ? e.message : String(e)
         }`;
 
-        core.error(error);
+        this.options.logger.error(error);
       }
     }
 
@@ -135,7 +143,10 @@ export class SbomApiClient {
       if (response.ok) {
         result = {
           success: true,
-          data: (await SbomApiClient.getResponseBody(response)) as T,
+          data: (await SbomApiClient.getResponseBody(
+            response,
+            this.options.logger
+          )) as T,
         };
       } else {
         result = {
@@ -143,8 +154,12 @@ export class SbomApiClient {
           data: {
             status: response.status,
             message:
-              (await SbomApiClient.getResponseBody<ApiErrorResponse>(response))
-                ?.message ||
+              (
+                await SbomApiClient.getResponseBody<ApiErrorResponse>(
+                  response,
+                  this.options.logger
+                )
+              )?.message ||
               response.statusText ||
               error ||
               "Unknown error",
@@ -162,7 +177,7 @@ export class SbomApiClient {
     }
 
     if (this.options.debug) {
-      core.info(`Response: ${JSON.stringify(result, null, 2)}`);
+      this.options.logger.info(`Response: ${JSON.stringify(result, null, 2)}`);
     }
 
     return result;

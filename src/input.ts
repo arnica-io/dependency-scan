@@ -1,5 +1,5 @@
-import * as core from "@actions/core";
 import * as path from "path";
+import { Platform } from "./platform/platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
@@ -11,7 +11,7 @@ export interface DependencyScanInput {
    */
   readonly scanPath: string;
   /**
-   * Path to the repository in the GitHub runner to scan.
+   * Path to the repository on the CI runner to scan.
    */
   readonly repoScanPath: string;
   readonly apiBaseUrl: string;
@@ -21,46 +21,60 @@ export interface DependencyScanInput {
   readonly debug: boolean;
 }
 
-export function getValidatedInput(): DependencyScanInput {
+export function getValidatedInput(platform: Platform): DependencyScanInput {
+  const workspacePath = platform.getWorkspacePath();
+
+  const scanPath = process.env.INPUT_SCAN_PATH || ".";
+
+  const scanTimeoutSeconds = parseInt(
+    process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
+    10
+  );
+
   const input: DependencyScanInput = {
-    repoUrl: process.env.INPUT_REPOSITORY_URL || "",
-    branch: process.env.INPUT_BRANCH || "",
-    scanPath: process.env.INPUT_SCAN_PATH || "",
-    // The scan path is relative to the repository root
+    repoUrl: process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || "",
+    branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "main",
+    scanPath,
     repoScanPath: path.normalize(
-      path.join(
-        process.env.GITHUB_WORKSPACE || "",
-        process.env.INPUT_SCAN_PATH || ""
-      )
+      path.join(workspacePath, scanPath)
     ),
-    apiBaseUrl: process.env.INPUT_API_BASE_URL || "",
-    scanTimeoutSeconds: parseInt(
-      process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
-      10
-    ),
+    apiBaseUrl: process.env.INPUT_API_BASE_URL || "https://api.app.arnica.io",
+    scanTimeoutSeconds,
     apiToken: process.env.INPUT_API_TOKEN || process.env.ARNICA_API_TOKEN || "",
     onFindings: process.env.INPUT_ON_FINDINGS || "fail",
     debug: process.env.INPUT_DEBUG === "true",
   };
 
   if (input.debug) {
-    core.info(`env.GITHUB_WORKSPACE=${process.env.GITHUB_WORKSPACE}`);
-    core.info(`Input: ${JSON.stringify(input, null, 2)}`);
+    // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): Never log API token value; mask in structured debug output
+    const { apiToken: _token, ...inputForLog } = input;
+    platform.info(`Workspace path: ${workspacePath}`);
+    platform.info(
+      `Input: ${JSON.stringify(
+        { ...inputForLog, apiToken: _token ? "(redacted)" : "(empty)" },
+        null,
+        2
+      )}`
+    );
   }
 
-  // Validate ON_FINDINGS input
   if (!onFindings.includes(input.onFindings)) {
-    core.setFailed(
-      `Invalid on-findings value: '${
-        input.onFindings
-      }'. Must be one of: ${onFindings.join(", ")}`
-    );
+    const msg = `Invalid on-findings value: '${input.onFindings}'. Must be one of: ${onFindings.join(", ")}`;
+    platform.setFailed(msg);
+    throw new Error(msg);
+  }
+
+  if (!Number.isFinite(scanTimeoutSeconds) || scanTimeoutSeconds < 1) {
+    const msg = `Invalid scan-timeout-seconds: must be a positive integer`;
+    platform.setFailed(msg);
+    throw new Error(msg);
   }
 
   if (!input.apiToken) {
-    core.setFailed(
-      "API token is missing. Pass env ARNICA_API_TOKEN from a secret."
-    );
+    const msg =
+      "API token is missing. Pass env ARNICA_API_TOKEN from a secret.";
+    platform.setFailed(msg);
+    throw new Error(msg);
   }
 
   return input;

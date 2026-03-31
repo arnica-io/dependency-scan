@@ -29,7 +29,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           persist-credentials: false
 
@@ -59,6 +59,10 @@ uses: arnica-io/dependency-scan@4aa5148d03e13b5082a5d1a0c8b00ad7946f8bb3 # v1.0.
 ```
 
 The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
+
+### Package Integrity
+
+All npm packages are published with [SLSA provenance](https://docs.npmjs.com/generating-provenance-statements), providing cryptographic proof that each build originated from this repository. npm versions are immutable — once published, they cannot be modified or overwritten.
 
 ### Recommended Workflow Triggers
 
@@ -137,6 +141,90 @@ Create an Arnica API key with only the SBOM scopes:
 2. Create a new API key.
 3. Select scopes: `sbom-api:read` and `sbom-api:write` only.
 4. Store the token as a repository secret named `ARNICA_API_TOKEN`.
+
+---
+
+## Azure DevOps Pipelines
+
+Use the **published npm package** from the registry (`npx`). You only need `checkout: self` and a Node task—no extra GitHub service connection for the default flow.
+
+### Prerequisites
+
+1. **ARNICA_API_TOKEN**: Store in a **Variable Group** (e.g. `arnica-secrets` under **Pipelines → Library**) as a secret.
+2. **Node.js 24+** on the agent (`NodeTool@0`).
+
+### Example pipeline
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: arnica-secrets
+
+steps:
+  - checkout: self
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "24.x"
+    displayName: Use Node 24
+
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)"
+      npx --yes "@arnica-io/dependency-scan@1.0.24"
+    displayName: Arnica dependency scan
+    env:
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+      INPUT_REPOSITORY_URL: $(Build.Repository.Uri)
+      INPUT_BRANCH: $(Build.SourceBranchName)
+      INPUT_SCAN_PATH: "."
+      INPUT_ON_FINDINGS: fail
+```
+
+Pin the version in the `npx` argument (`@x.y.z`). This README is updated with current pins on each release.
+
+### Advanced: build from a git checkout (lockfile-pinned)
+
+If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same `INPUT_*` / `ARNICA_API_TOKEN` env as above from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
+
+### Environment variables
+
+| Name                         | Required | Default                     | Description                                                  |
+| ---------------------------- | :------: | --------------------------- | ------------------------------------------------------------ |
+| `ARNICA_API_TOKEN`           |   Yes    |                             | Arnica API token                                             |
+| `INPUT_REPOSITORY_URL`       |   Yes*   |                             | Repository URL for the scan (e.g. `$(Build.Repository.Uri)` in Azure DevOps) |
+| `INPUT_BRANCH`               |   Yes*   |                             | Branch name (e.g. `$(Build.SourceBranchName)`)               |
+| `INPUT_SCAN_PATH`            |   No     | `.`                         | Directory path to scan                                       |
+| `INPUT_API_BASE_URL`         |   No     | `https://api.app.arnica.io` | Arnica API base URL                                          |
+| `INPUT_SCAN_TIMEOUT_SECONDS` |   No     | `900`                       | Timeout (seconds) for scan completion                        |
+| `INPUT_ON_FINDINGS`          |   No     | `fail`                      | `fail`, `alert`, or `pass`                                   |
+| `INPUT_DEBUG`                |   No     | `false`                     | Verbose API debug logs                                       |
+
+\*Set explicitly in Azure DevOps (see example); GitHub Actions maps inputs automatically.
+
+### Example: scan a subdirectory, alert only
+
+Add to the same `env` block as the main example:
+
+```yaml
+      INPUT_SCAN_PATH: "services/payments"
+      INPUT_ON_FINDINGS: alert
+```
+
+### Where to View Reports (Azure DevOps)
+
+1. **Pipeline Extensions Tab**: Scan summary is uploaded as a task summary attachment
+2. **Arnica Dashboard**: Full vulnerability management at `https://app.arnica.io`
+3. **Pipeline Logs**: Console output with scan details
+
+---
 
 ### Contributing
 

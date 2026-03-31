@@ -1,7 +1,6 @@
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { Platform } from "./platform/platform";
 import { DependencyScanInput } from "./input";
 import { sleep } from "./utils";
 import { Sbom } from "./sbom";
@@ -53,16 +52,22 @@ export type WaitForScanCompletionResult =
 export class DependencyScanAction {
   private readonly api: SbomApiClient;
 
-  constructor(private readonly input: DependencyScanInput) {
+  constructor(
+    private readonly input: DependencyScanInput,
+    private readonly platform: Platform
+  ) {
     this.api = new SbomApiClient(input.apiBaseUrl, input.apiToken, {
       timeoutSeconds: 30,
       maxRetries: 2,
       debug: input.debug,
+      logger: platform,
     });
   }
 
   private async generateSbom(): Promise<Sbom | undefined> {
-    await exec.exec("cdxgen", ["."], { cwd: this.input.repoScanPath });
+    await this.platform.runCommand("cdxgen", ["."], {
+      cwd: this.input.repoScanPath,
+    });
     const bomPath = path.join(this.input.repoScanPath, "bom.json");
 
     if (!(await fs.stat(bomPath)).isFile()) {
@@ -100,12 +105,12 @@ export class DependencyScanAction {
         this.input.scanTimeoutSeconds - elapsedTimeSeconds
       );
 
-      core.info(
+      this.platform.info(
         `Waiting for scan completion (remaining: ${remainingSeconds}s)...`
       );
 
       if (remainingSeconds <= 0) {
-        core.info(
+        this.platform.info(
           `startTime=${startTime}, elapsedTimeSeconds=${elapsedTimeSeconds}`
         );
         return { status: "Timeout" };
@@ -118,7 +123,7 @@ export class DependencyScanAction {
   private async tryRun(): Promise<DependencyScanRunResult> {
     try {
       /****** Generate SBOM ******/
-      core.info("Generating SBOM with cdxgen...");
+      this.platform.info("Generating SBOM with cdxgen...");
       const sbom = await this.generateSbom();
 
       if (!sbom) {
@@ -128,17 +133,18 @@ export class DependencyScanAction {
         };
       }
 
-      core.info(JSON.stringify(sbom.metadata?.tools?.components?.[0], null, 2));
-      core.info("SBOM generated successfully");
+      this.platform.info(
+        JSON.stringify(sbom.metadata?.tools?.components?.[0], null, 2)
+      );
+      this.platform.info("SBOM generated successfully");
 
       /****** Start SBOM Scan ******/
 
       const apiPath = path
         .normalize(path.join("/", this.input.scanPath))
-        // on Windows, the path separator is \, but the API expects /
         .replaceAll("\\", "/");
 
-      core.info(
+      this.platform.info(
         `Starting SBOM scan with repositoryUrl=${this.input.repoUrl}, branch=${this.input.branch}, path=${apiPath}`
       );
       const startScanResponse = await this.api.startScan({
@@ -161,8 +167,8 @@ export class DependencyScanAction {
       const scanId = startScanResponse.data.scanId;
       const uploadUrl = startScanResponse.data.uploadUrl;
 
-      core.info(`scanId=${scanId}`);
-      core.info("Uploading SBOM...");
+      this.platform.info(`scanId=${scanId}`);
+      this.platform.info("Uploading SBOM...");
 
       const response = await this.api.uploadSbom(uploadUrl, sbom);
 
@@ -229,17 +235,21 @@ export class DependencyScanAction {
           };
       }
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred";
+      this.platform.error(
+        err instanceof Error ? err.stack || err.message : String(err)
+      );
       return {
         status: "Error",
-        message:
-          err instanceof Error ? err.message : "An unknown error occurred",
+        message,
       };
     }
   }
 
   private async setOutputs(result: DependencyScanRunResult): Promise<void> {
-    core.setOutput("status", result.status);
-    core.setOutput("scan_id", result.scanId ?? "");
+    this.platform.setOutput("status", result.status);
+    this.platform.setOutput("scan_id", result.scanId ?? "");
   }
 
   private async writeSummary(result: DependencyScanRunResult): Promise<void> {
@@ -253,7 +263,7 @@ export class DependencyScanAction {
       this.input.scanPath
     }\` (Scan ID: \`${result.scanId || "None"}\`).`;
 
-    core.info(sentence);
+    this.platform.info(sentence);
 
     switch (result.status) {
       case "Success":
@@ -272,9 +282,13 @@ export class DependencyScanAction {
         break;
     }
 
-    core.info(summaryMessage);
+    this.platform.info(summaryMessage);
 
-    await SummaryWriter.writeSummary(summaryMessage, findingsSummary);
+    await SummaryWriter.writeSummary(
+      this.platform,
+      summaryMessage,
+      findingsSummary
+    );
   }
 
   public async run(): Promise<void> {
@@ -283,7 +297,6 @@ export class DependencyScanAction {
     await this.setOutputs(result);
     await this.writeSummary(result);
 
-    // exit 1 on failure
     if (
       result.status === "Error" ||
       (result.status === "Failure" && this.input.onFindings === "fail")
