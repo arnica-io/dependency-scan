@@ -115,7 +115,6 @@ jobs:
           git reset --hard origin/main
 
           RELEASE_SHA=$(git rev-list -n 1 "${TAG_NAME}")
-          MAJOR_VERSION=$(echo "${NEW_VERSION}" | sed -E 's/^([0-9]+).*/\1/')
 
           # Update GitHub Action SHA pins in README
           sed -i -E "s|([A-Za-z0-9_.-]+/dependency-scan@)[^[:space:]]+([ ]*#[^\n]*)?|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
