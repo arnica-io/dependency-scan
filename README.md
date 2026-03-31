@@ -146,100 +146,76 @@ Create an Arnica API key with only the SBOM scopes:
 
 ## Azure DevOps Pipelines
 
-The same scan logic runs on Azure DevOps. For **reproducible installs** (locked transitive dependencies), check out this repository at a release tag and use `pnpm install --frozen-lockfile` with the repo’s `pnpm-lock.yaml`—the same approach as the official pipeline template.
+Use the **published npm package** from the registry (`npx`). You only need `checkout: self` and a Node task—no extra GitHub service connection for the default flow.
 
-### Prerequisites (Azure DevOps)
+### Prerequisites
 
-1. **ARNICA_API_TOKEN**: Create a **Variable Group** named `arnica-secrets` in your Azure DevOps project (**Pipelines > Library**) containing the token as a secret variable.
-2. **Node.js 24+**: Add a `NodeTool@0` task (or match the version in the template below).
-3. **GitHub service connection** (optional): Only if you load `azure-pipelines/templates/dependency-scan.yml` from the `arnica-io/dependency-scan` repo. That checkout is for the **template file**; the template runs the **published npm package** via `npx`, not a local build.
+1. **ARNICA_API_TOKEN**: Store in a **Variable Group** (e.g. `arnica-secrets` under **Pipelines → Library**) as a secret.
+2. **Node.js 24+** on the agent (`NodeTool@0`).
 
-### Quickstart (Azure DevOps, lockfile-pinned)
-
-Check out `arnica-io/dependency-scan` at a tag or SHA, enable Corepack, install with a **frozen** lockfile, build, then run the CLI (local `node_modules/.bin` is on `PATH` for `cdxgen`):
+### Example pipeline
 
 ```yaml
-resources:
-  repositories:
-    - repository: dependency-scan
-      type: github
-      name: arnica-io/dependency-scan
-      endpoint: <your-github-service-connection>
-      ref: refs/tags/v1.0.24
-
 trigger:
   branches:
     include:
       - main
 
 pool:
-  vmImage: "ubuntu-latest"
+  vmImage: ubuntu-latest
 
 variables:
   - group: arnica-secrets
 
 steps:
   - checkout: self
-  - checkout: dependency-scan
 
   - task: NodeTool@0
     inputs:
       versionSpec: "24.x"
+    displayName: Use Node 24
 
   - script: |
       set -euo pipefail
-      REPO="$(Pipeline.Workspace)/s/dependency-scan"
-      cd "$REPO"
-      corepack enable
-      corepack prepare pnpm@9.15.4 --activate
-      pnpm install --frozen-lockfile
-      pnpm run build
-      export PATH="$REPO/node_modules/.bin:$PATH"
-      node dist/cli.js
-    displayName: "Arnica Dependency Scan"
+      cd "$(Build.SourcesDirectory)"
+      npx --yes "@arnica-io/dependency-scan@1.0.24"
+    displayName: Arnica dependency scan
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+      INPUT_REPOSITORY_URL: $(Build.Repository.Uri)
+      INPUT_BRANCH: $(Build.SourceBranchName)
+      INPUT_SCAN_PATH: "."
+      INPUT_ON_FINDINGS: fail
 ```
 
-The scan auto-detects the Azure DevOps environment and reads the repository URL and branch from built-in pipeline variables.
+Pin the version in the `npx` argument (`@x.y.z`). This README is updated with current pins on each release.
 
-### Alternative: `npx` (simple, registry-pinned only)
+### Advanced: build from a git checkout (lockfile-pinned)
 
-If you accept npm’s resolution for that invocation (transitives are not locked to this repo’s `pnpm-lock.yaml`):
+If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same `INPUT_*` / `ARNICA_API_TOKEN` env as above from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
 
-```yaml
-  - script: npx @arnica-io/dependency-scan@1.0.24
-    displayName: "Arnica Dependency Scan"
-    env:
-      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
-```
+### Environment variables
 
-### Pinning to a Specific Version
+| Name                         | Required | Default                     | Description                                                  |
+| ---------------------------- | :------: | --------------------------- | ------------------------------------------------------------ |
+| `ARNICA_API_TOKEN`           |   Yes    |                             | Arnica API token                                             |
+| `INPUT_REPOSITORY_URL`       |   Yes*   |                             | Repository URL for the scan (e.g. `$(Build.Repository.Uri)` in Azure DevOps) |
+| `INPUT_BRANCH`               |   Yes*   |                             | Branch name (e.g. `$(Build.SourceBranchName)`)               |
+| `INPUT_SCAN_PATH`            |   No     | `.`                         | Directory path to scan                                       |
+| `INPUT_API_BASE_URL`         |   No     | `https://api.app.arnica.io` | Arnica API base URL                                          |
+| `INPUT_SCAN_TIMEOUT_SECONDS` |   No     | `900`                       | Timeout (seconds) for scan completion                        |
+| `INPUT_ON_FINDINGS`          |   No     | `fail`                      | `fail`, `alert`, or `pass`                                   |
+| `INPUT_DEBUG`                |   No     | `false`                     | Verbose API debug logs                                       |
 
-Use a **tag or commit SHA** when checking out `dependency-scan`, or an exact `@x.y.z` with `npx`. README pins are updated on each release.
+\*Set explicitly in Azure DevOps (see example); GitHub Actions maps inputs automatically.
 
-### Environment Variables
+### Example: scan a subdirectory, alert only
 
-All configuration is via environment variables in the pipeline step:
-
-| Name                       | Required | Default                     | Description                                                   |
-| -------------------------- | :------: | --------------------------- | ------------------------------------------------------------- |
-| `ARNICA_API_TOKEN`         |   Yes    |                             | Arnica API token                                              |
-| `INPUT_SCAN_PATH`          |   No     | `.`                         | Directory path to scan (e.g., `services/api`)                 |
-| `INPUT_API_BASE_URL`       |   No     | `https://api.app.arnica.io` | Arnica API base URL                                           |
-| `INPUT_SCAN_TIMEOUT_SECONDS` |  No    | `900`                       | Timeout (seconds) to wait for scan completion                 |
-| `INPUT_ON_FINDINGS`        |   No     | `fail`                      | Behavior when findings are detected: `fail`, `alert`, `pass`  |
-| `INPUT_DEBUG`              |   No     | `false`                     | Enable verbose debug logs                                     |
-
-### Example: Scan Subdirectory, Alert Only
-
-Use the same `script` block as in the quickstart (`pnpm install --frozen-lockfile` / `node dist/cli.js`) and add:
+Add to the same `env` block as the main example:
 
 ```yaml
-    env:
-      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
       INPUT_SCAN_PATH: "services/payments"
-      INPUT_ON_FINDINGS: "alert"
+      INPUT_ON_FINDINGS: alert
 ```
 
 ### Where to View Reports (Azure DevOps)
