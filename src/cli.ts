@@ -2,16 +2,21 @@
 
 import { getValidatedInput } from "./input";
 import { DependencyScanAction } from "./scan-action";
+import { GitHubActionsPlatform } from "./platform/github";
+import { AzureDevOpsPlatform } from "./platform/azure-devops";
 
 async function main(): Promise<void> {
   const isGitHub = !!process.env.GITHUB_ACTIONS;
 
   const platform = isGitHub
-    ? new (await import("./platform/github")).GitHubActionsPlatform()
-    : new (await import("./platform/azure-devops")).AzureDevOpsPlatform();
+    ? new GitHubActionsPlatform()
+    : new AzureDevOpsPlatform();
 
   const input = getValidatedInput(platform);
   await new DependencyScanAction(input, platform).run();
 }
 
-main();
+main().catch((err: unknown) => {
+  console.error(err);
+  process.exit(1);
+});

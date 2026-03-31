@@ -68,7 +68,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.tagger.outputs.new_tag
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         if: steps.tagger.outputs.new_tag

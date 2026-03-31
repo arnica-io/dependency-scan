@@ -146,16 +146,27 @@ Create an Arnica API key with only the SBOM scopes:
 
 ## Azure DevOps Pipelines
 
-The same scan logic works in Azure DevOps via `npx` — no git clone, no service connections, no script downloads.
+The same scan logic runs on Azure DevOps. For **reproducible installs** (locked transitive dependencies), check out this repository at a release tag and use `pnpm install --frozen-lockfile` with the repo’s `pnpm-lock.yaml`—the same approach as the official pipeline template.
 
 ### Prerequisites (Azure DevOps)
 
 1. **ARNICA_API_TOKEN**: Create a **Variable Group** named `arnica-secrets` in your Azure DevOps project (**Pipelines > Library**) containing the token as a secret variable.
-2. **Node.js 24+**: Add a `NodeTool@0` task to your pipeline.
+2. **Node.js 24+**: Add a `NodeTool@0` task (or match the version in the template below).
+3. **Optional – GitHub service connection**: Only if you use `checkout: dependency-scan` from GitHub (see `azure-pipelines/templates/dependency-scan.yml`).
 
-### Quickstart (Azure DevOps)
+### Quickstart (Azure DevOps, lockfile-pinned)
+
+Check out `arnica-io/dependency-scan` at a tag or SHA, enable Corepack, install with a **frozen** lockfile, build, then run the CLI (local `node_modules/.bin` is on `PATH` for `cdxgen`):
 
 ```yaml
+resources:
+  repositories:
+    - repository: dependency-scan
+      type: github
+      name: arnica-io/dependency-scan
+      endpoint: <your-github-service-connection>
+      ref: refs/tags/v1.0.24
+
 trigger:
   branches:
     include:
@@ -169,12 +180,22 @@ variables:
 
 steps:
   - checkout: self
+  - checkout: dependency-scan
 
   - task: NodeTool@0
     inputs:
       versionSpec: "24.x"
 
-  - script: npx @arnica-io/dependency-scan@1.0.24
+  - script: |
+      set -euo pipefail
+      REPO="$(Pipeline.Workspace)/s/dependency-scan"
+      cd "$REPO"
+      corepack enable
+      corepack prepare pnpm@9.15.4 --activate
+      pnpm install --frozen-lockfile
+      pnpm run build
+      export PATH="$REPO/node_modules/.bin:$PATH"
+      node dist/cli.js
     displayName: "Arnica Dependency Scan"
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
@@ -182,9 +203,20 @@ steps:
 
 The scan auto-detects the Azure DevOps environment and reads the repository URL and branch from built-in pipeline variables.
 
+### Alternative: `npx` (simple, registry-pinned only)
+
+If you accept npm’s resolution for that invocation (transitives are not locked to this repo’s `pnpm-lock.yaml`):
+
+```yaml
+  - script: npx @arnica-io/dependency-scan@1.0.24
+    displayName: "Arnica Dependency Scan"
+    env:
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+```
+
 ### Pinning to a Specific Version
 
-The examples above use an exact version pin (e.g., `@1.0.24`). This README is automatically updated with the latest version on every release.
+Use a **tag or commit SHA** when checking out `dependency-scan`, or an exact `@x.y.z` with `npx`. README pins are updated on each release.
 
 ### Environment Variables
 
@@ -201,13 +233,13 @@ All configuration is via environment variables in the pipeline step:
 
 ### Example: Scan Subdirectory, Alert Only
 
+Use the same `script` block as in the quickstart (`pnpm install --frozen-lockfile` / `node dist/cli.js`) and add:
+
 ```yaml
-- script: npx @arnica-io/dependency-scan@1.0.24
-  displayName: "Arnica Dependency Scan"
-  env:
-    ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
-    INPUT_SCAN_PATH: "services/payments"
-    INPUT_ON_FINDINGS: "alert"
+    env:
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+      INPUT_SCAN_PATH: "services/payments"
+      INPUT_ON_FINDINGS: "alert"
 ```
 
 ### Where to View Reports (Azure DevOps)

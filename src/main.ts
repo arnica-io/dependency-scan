@@ -1,7 +1,0 @@
-import { GitHubActionsPlatform } from "./platform/github";
-import { getValidatedInput } from "./input";
-import { DependencyScanAction } from "./scan-action";
-
-const platform = new GitHubActionsPlatform();
-const input = getValidatedInput(platform);
-new DependencyScanAction(input, platform).run();

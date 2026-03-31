@@ -68,24 +68,25 @@ parameters:
 steps:
   - task: NodeTool@0
     inputs:
-      versionSpec: "20.x"
+      versionSpec: "24.x"
     displayName: "Setup Node.js"
 
   - script: |
-      npm install -g pnpm@10.21.0
-    displayName: "Install pnpm"
-
-  - script: |
+      set -euo pipefail
       SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
       cd "$SCAN_REPO_DIR"
+      corepack enable
+      corepack prepare pnpm@9.15.4 --activate
       pnpm install --frozen-lockfile
-    displayName: "Install scan dependencies"
+      pnpm run build
+    displayName: "Install dependencies and build scan CLI (lockfile-pinned)"
 
   - script: |
+      set -euo pipefail
       SCAN_REPO_DIR="$(Pipeline.Workspace)/s/dependency-scan"
-      cd "$SCAN_REPO_DIR"
       export PATH="$SCAN_REPO_DIR/node_modules/.bin:$PATH"
-      node --require ts-node/register src/main-ado.ts
+      cd "$SCAN_REPO_DIR"
+      node dist/cli.js
     displayName: "Run Arnica Dependency Scan"
     env:
       INPUT_REPOSITORY_URL: ${{ parameters.repositoryUrl }}

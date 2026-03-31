@@ -96,7 +96,7 @@ export class SbomApiClient {
     try {
       return JSON.parse(text) as T;
     } catch {
-      // Agentic Rule (ARNIE_API_JSON_PARSING): Log parse failure without echoing response body (may contain secrets/HTML)
+      // Agentic Rule (ARNIE_API_JSON_PARSING): Log only; never echo body (secrets/HTML).
       logger.error("Failed to parse API response as JSON");
       return undefined;
     }
