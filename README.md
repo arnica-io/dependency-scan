@@ -35,7 +35,7 @@ jobs:
 
       - name: Dependency Security Scan with Arnica
         id: arnica
-        uses: arnica-io/dependency-scan@488f588afe15c73937518b504ec2f8ac86f0a099 # v1.0.26
+        uses: arnica-io/dependency-scan@3354107798522d8cf4ea7906b5fa9c79da0407c4 # v1.0.27
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
@@ -55,7 +55,7 @@ While Arnica's action tags are immutable, as a general best practice we recommen
 
 ```yaml
 # Best practice – pinned to commit SHA
-uses: arnica-io/dependency-scan@488f588afe15c73937518b504ec2f8ac86f0a099 # v1.0.26
+uses: arnica-io/dependency-scan@3354107798522d8cf4ea7906b5fa9c79da0407c4 # v1.0.27
 ```
 
 The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
@@ -119,7 +119,7 @@ Scan a subdirectory and alert (do not fail) on policy violations:
 ```yaml
 - name: Generate SBOM and scan with Arnica
   id: arnica
-  uses: arnica-io/dependency-scan@488f588afe15c73937518b504ec2f8ac86f0a099 # v1.0.26
+  uses: arnica-io/dependency-scan@3354107798522d8cf4ea7906b5fa9c79da0407c4 # v1.0.27
   env:
     ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
   with:
@@ -178,7 +178,7 @@ steps:
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)"
-      npx --yes "@arnica-io/dependency-scan@488f588afe15c73937518b504ec2f8ac86f0a099 # v1.0.26
+      npx --yes "@arnica-io/dependency-scan@3354107798522d8cf4ea7906b5fa9c79da0407c4 # v1.0.27
     displayName: Arnica dependency scan
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
