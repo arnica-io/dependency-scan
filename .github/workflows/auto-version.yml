@@ -55,37 +55,6 @@ jobs:
           git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
           git push origin "$MAJOR_TAG" --force
 
-      - name: Setup pnpm
-        if: steps.tagger.outputs.new_tag
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-
-      - name: Setup Node.js
-        if: steps.tagger.outputs.new_tag
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        if: steps.tagger.outputs.new_tag
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        if: steps.tagger.outputs.new_tag
-        run: pnpm run build
-
-      - name: Set npm version from tag
-        if: steps.tagger.outputs.new_tag
-        env:
-          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
-        run: npm version "${NEW_VERSION}" --no-git-tag-version
-
-      - name: Publish to npm
-        if: steps.tagger.outputs.new_tag
-        run: pnpm publish --access public --no-git-checks
-        env:
-          NPM_CONFIG_PROVENANCE: "true"
-
       - name: Generate App token
         if: steps.tagger.outputs.new_tag
         id: app-token
@@ -136,3 +105,34 @@ jobs:
             echo "- GitHub Action SHA: \`${RELEASE_SHA}\` (${TAG_NAME})"
             echo "- npm version: \`${NEW_VERSION}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup pnpm
+        if: steps.tagger.outputs.new_tag
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - name: Setup Node.js
+        if: steps.tagger.outputs.new_tag
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        if: steps.tagger.outputs.new_tag
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: steps.tagger.outputs.new_tag
+        run: pnpm run build
+
+      - name: Set npm version from tag
+        if: steps.tagger.outputs.new_tag
+        env:
+          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
+        run: npm version "${NEW_VERSION}" --no-git-tag-version
+
+      - name: Publish to npm
+        if: steps.tagger.outputs.new_tag
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
