@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { spawn } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
@@ -33,21 +33,23 @@ export class AzureDevOpsPlatform implements Platform {
     options?: { cwd?: string }
   ): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-      execFile(
-        command,
-        args,
-        {
-          cwd: options?.cwd,
-          stdio: "inherit",
-        },
-        (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
+      const child = spawn(command, args, {
+        cwd: options?.cwd,
+        stdio: "inherit",
+        shell: false,
+      });
+      child.on("error", reject);
+      child.on("close", (code, signal) => {
+        if (code === 0) {
+          resolve();
+          return;
         }
-      );
+        reject(
+          new Error(
+            `Command exited with code ${code ?? "null"}, signal ${signal ?? "null"}`
+          )
+        );
+      });
     });
   }
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { getValidatedInput } from "./input";
-import { DependencyScanAction } from "./scan-action";
 import { GitHubActionsPlatform } from "./platform/github";
 import { AzureDevOpsPlatform } from "./platform/azure-devops";
+import { DependencyScanAction } from "./scan-action";
 
 async function main(): Promise<void> {
   const isGitHub = !!process.env.GITHUB_ACTIONS;
