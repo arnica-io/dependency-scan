@@ -3,6 +3,23 @@ import { Platform } from "./platform/platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
+function normalizeRepositoryUrl(rawUrl: string): string {
+  if (!rawUrl) {
+    return rawUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): Strip embedded credentials from repository URLs before sending/logging
+    parsed.username = "";
+    parsed.password = "";
+    return parsed.toString();
+  } catch {
+    // Fallback for non-URL inputs (or unusual URL formats): remove userinfo from https://user@host/...
+    return rawUrl.replace(/^https:\/\/[^/@]+@/u, "https://");
+  }
+}
+
 export interface DependencyScanInput {
   readonly repoUrl: string;
   readonly branch: string;
@@ -32,13 +49,18 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   );
 
   const input: DependencyScanInput = {
-    repoUrl: process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || "",
+    repoUrl: normalizeRepositoryUrl(
+      process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || ""
+    ),
     branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "main",
     scanPath,
     repoScanPath: path.normalize(
       path.join(workspacePath, scanPath)
     ),
-    apiBaseUrl: process.env.INPUT_API_BASE_URL || "https://api.app.arnica.io",
+    apiBaseUrl:
+      process.env.INPUT_API_BASE_URL ||
+      process.env.ARNICA_API_BASE_URL ||
+      "https://api.app.arnica.io",
     scanTimeoutSeconds,
     apiToken: process.env.INPUT_API_TOKEN || process.env.ARNICA_API_TOKEN || "",
     onFindings: process.env.INPUT_ON_FINDINGS || "fail",

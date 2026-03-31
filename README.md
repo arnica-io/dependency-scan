@@ -190,6 +190,22 @@ steps:
 
 Pin the version in the `npx` argument (`@x.y.z`). This README is updated with current pins on each release.
 
+### Self-hosted agent note (`npm.pkg.github.com` / 401)
+
+If your Azure DevOps self-hosted agent has a global/user `.npmrc` that maps `@arnica-io` to GitHub Packages, `npx` may fail with `401 Unauthorized` against `npm.pkg.github.com`.
+
+Force npmjs for this step:
+
+```yaml
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)"
+      npm config set registry "https://registry.npmjs.org/"
+      npm config delete @arnica-io:registry || true
+      npx --registry "https://registry.npmjs.org/" --yes "@arnica-io/dependency-scan@1.0.28"
+    displayName: Arnica dependency scan
+```
+
 ### Advanced: build from a git checkout (lockfile-pinned)
 
 If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same `INPUT_*` / `ARNICA_API_TOKEN` env as above from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
@@ -199,15 +215,15 @@ If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub 
 | Name                         | Required | Default                     | Description                                                  |
 | ---------------------------- | :------: | --------------------------- | ------------------------------------------------------------ |
 | `ARNICA_API_TOKEN`           |   Yes    |                             | Arnica API token                                             |
-| `INPUT_REPOSITORY_URL`       |   Yes*   |                             | Repository URL for the scan (e.g. `$(Build.Repository.Uri)` in Azure DevOps) |
-| `INPUT_BRANCH`               |   Yes*   |                             | Branch name (e.g. `$(Build.SourceBranchName)`)               |
+| `INPUT_REPOSITORY_URL`       |   No*    |                             | Repository URL override (auto-detected from CI when omitted) |
+| `INPUT_BRANCH`               |   No*    |                             | Branch override (auto-detected from CI when omitted)         |
 | `INPUT_SCAN_PATH`            |   No     | `.`                         | Directory path to scan                                       |
 | `INPUT_API_BASE_URL`         |   No     | `https://api.app.arnica.io` | Arnica API base URL                                          |
 | `INPUT_SCAN_TIMEOUT_SECONDS` |   No     | `900`                       | Timeout (seconds) for scan completion                        |
 | `INPUT_ON_FINDINGS`          |   No     | `fail`                      | `fail`, `alert`, or `pass`                                   |
 | `INPUT_DEBUG`                |   No     | `false`                     | Verbose API debug logs                                       |
 
-\*Set explicitly in Azure DevOps (see example); GitHub Actions maps inputs automatically.
+\*In Azure DevOps these are auto-detected from `BUILD_REPOSITORY_URI` / `BUILD_SOURCEBRANCHNAME`. Set only if you need overrides.
 
 ### Example: scan a subdirectory, alert only
 
