@@ -40,14 +40,12 @@ jobs:
 
       - name: Bump version and push tag
         id: tagger
-        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
-        with:
-          github_token: ${{ steps.app-token.outputs.token }}
-          tag_prefix: v
-          release_branches: main
-          default_bump: patch
-          create_annotated_tag: true
-          fetch_all_tags: true
+        uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8 # v1.7.5
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+          RELEASE_BRANCHES: main
 
       - name: Create GitHub Release
         if: steps.tagger.outputs.new_tag
@@ -83,9 +81,9 @@ jobs:
         shell: bash
         env:
           TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
-          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
         run: |
           set -euo pipefail
+          NEW_VERSION="${TAG_NAME#v}"
           git fetch origin main
           git fetch origin tag "${TAG_NAME}" --no-tags
           git checkout main
@@ -136,8 +134,10 @@ jobs:
       - name: Set npm version from tag
         if: steps.tagger.outputs.new_tag
         env:
-          NEW_VERSION: ${{ steps.tagger.outputs.new_version }}
-        run: npm version "${NEW_VERSION}" --no-git-tag-version
+          TAG_NAME: ${{ steps.tagger.outputs.new_tag }}
+        run: |
+          NEW_VERSION="${TAG_NAME#v}"
+          npm version "${NEW_VERSION}" --no-git-tag-version
 
       - name: Publish to npm
         if: steps.tagger.outputs.new_tag
