@@ -3,6 +3,52 @@ import { Platform } from "./platform/platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
+function isBitbucketEnvironment(): boolean {
+  return Boolean(
+    process.env.BITBUCKET_PIPELINE_UUID ||
+      process.env.BITBUCKET_CLONE_DIR ||
+      process.env.BITBUCKET_REPO_FULL_NAME ||
+      process.env.BITBUCKET_GIT_HTTP_ORIGIN ||
+      process.env.BITBUCKET_GIT_SSH_ORIGIN ||
+      process.env.BITBUCKET_BRANCH ||
+      process.env.BITBUCKET_PR_SOURCE_BRANCH ||
+      process.env.BITBUCKET_SOURCE_BRANCH ||
+      process.env.BITBUCKET_BRANCH_NAME
+  );
+}
+
+function getBitbucketRepositoryUrlFallback(): string {
+  const directUrl =
+    process.env.BITBUCKET_GIT_HTTP_ORIGIN || process.env.BITBUCKET_GIT_SSH_ORIGIN;
+  if (directUrl) {
+    return directUrl;
+  }
+
+  const repoFullName = process.env.BITBUCKET_REPO_FULL_NAME;
+  if (!repoFullName) {
+    return "";
+  }
+
+  const bitbucketServerBaseUrl =
+    process.env.BITBUCKET_SERVER_URL || process.env.BITBUCKET_BASE_URL;
+  if (bitbucketServerBaseUrl) {
+    const trimmedBase = bitbucketServerBaseUrl.replace(/\/+$/u, "");
+    return `${trimmedBase}/scm/${repoFullName}.git`;
+  }
+
+  return `https://bitbucket.org/${repoFullName}`;
+}
+
+function getBitbucketBranchFallback(): string {
+  return (
+    process.env.BITBUCKET_BRANCH ||
+    process.env.BITBUCKET_PR_SOURCE_BRANCH ||
+    process.env.BITBUCKET_SOURCE_BRANCH ||
+    process.env.BITBUCKET_BRANCH_NAME ||
+    ""
+  );
+}
+
 function normalizeRepositoryUrl(rawUrl: string): string {
   if (!rawUrl) {
     return rawUrl;
@@ -50,9 +96,16 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
 
   const input: DependencyScanInput = {
     repoUrl: normalizeRepositoryUrl(
-      process.env.INPUT_REPOSITORY_URL || process.env.BUILD_REPOSITORY_URI || ""
+      process.env.INPUT_REPOSITORY_URL ||
+        process.env.BUILD_REPOSITORY_URI ||
+        getBitbucketRepositoryUrlFallback() ||
+        ""
     ),
-    branch: process.env.INPUT_BRANCH || process.env.BUILD_SOURCEBRANCHNAME || "main",
+    branch:
+      process.env.INPUT_BRANCH ||
+      process.env.BUILD_SOURCEBRANCHNAME ||
+      getBitbucketBranchFallback() ||
+      "main",
     scanPath,
     repoScanPath: path.normalize(
       path.join(workspacePath, scanPath)
@@ -95,6 +148,13 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   if (!input.apiToken) {
     const msg =
       "API token is missing. Pass env ARNICA_API_TOKEN from a secret.";
+    platform.setFailed(msg);
+    throw new Error(msg);
+  }
+
+  if (isBitbucketEnvironment() && !input.repoUrl) {
+    const msg =
+      "Repository URL is missing in Bitbucket environment. Set INPUT_REPOSITORY_URL explicitly.";
     platform.setFailed(msg);
     throw new Error(msg);
   }

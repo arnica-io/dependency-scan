@@ -6,6 +6,8 @@
 
 ## Arnica Dependency Scan – GitHub Action
 
+The same scanner is available as a **GitHub Action** (composite) and as an **npm CLI** for Azure DevOps and Bitbucket Pipelines (`npx @arnica-io/dependency-scan`).
+
 Extend Arnica’s security scanning into complex build environments that pull dependencies from multiple sources or compile packages from source.
 When real-time checks aren’t enough, post-build scanning validates SBOMs directly from your CI/CD pipelines via API, returning pass/fail results to enforce security gates before merges or deployments. Ensure consistent policy enforcement and centralized visibility in Arnica’s dashboard, even for environments with intricate dependency resolution.
 
@@ -239,6 +241,152 @@ Add to the same `env` block as the main example:
 1. **Pipeline Extensions Tab**: Scan summary is uploaded as a task summary attachment
 2. **Arnica Dashboard**: Full vulnerability management at `https://app.arnica.io`
 3. **Pipeline Logs**: Console output with scan details
+
+---
+
+## Bitbucket Pipelines
+
+Use the **published npm package** with `npx`, same as Azure DevOps.
+
+- **Bitbucket Cloud**: auto-detects from `BITBUCKET_GIT_HTTP_ORIGIN` and `BITBUCKET_BRANCH`.
+- **Bitbucket Server/Data Center runners**: also supports `BITBUCKET_GIT_SSH_ORIGIN` and derives a repository URL from `BITBUCKET_SERVER_URL` + `BITBUCKET_REPO_FULL_NAME` when needed.
+
+You can always override detection with `INPUT_REPOSITORY_URL` and `INPUT_BRANCH`.
+
+### Prerequisites
+
+1. **ARNICA_API_TOKEN**: Store as a **secured** repository variable (Repository settings → Pipelines → Repository variables).
+2. **Node.js 24+** on the step image (for example `node:24`).
+
+### Example pipeline
+
+```yaml
+image: node:24
+
+pipelines:
+  default:
+    - step:
+        name: Arnica dependency scan
+        script:
+          - cd "$BITBUCKET_CLONE_DIR"
+          - npx --yes "@arnica-io/dependency-scan@1.0.30"
+        artifacts:
+          - arnica-scan-summary.md
+          - .arnica-scan-outputs.env
+        variables:
+          ARNICA_API_TOKEN: $ARNICA_API_TOKEN
+```
+
+Pin the version in the `npx` argument (`@x.y.z`). This README is updated with current pins on each release.
+
+### Advanced: test scanner from source before npm publish
+
+If you want to validate unreleased changes, clone the scanner source in the pipeline, build it, and run `node dist/cli.js` instead of `npx`.
+
+```yaml
+image: node:24
+
+pipelines:
+  default:
+    - step:
+        name: Arnica dependency scan (from source)
+        script:
+          - set -euo pipefail
+          - export TARGET_REPO_DIR="$BITBUCKET_CLONE_DIR"
+          - export SCAN_SRC_DIR="/tmp/dependency-scan-src"
+          - git clone --depth 1 --branch "${ARNICA_SCAN_REF:-main}" "${ARNICA_SCAN_REPO_URL}" "$SCAN_SRC_DIR"
+          - cd "$SCAN_SRC_DIR"
+          - corepack enable
+          - corepack prepare pnpm@9.15.4 --activate
+          - pnpm install --frozen-lockfile
+          - pnpm run build
+          - export PATH="$SCAN_SRC_DIR/node_modules/.bin:$PATH"
+          - export BITBUCKET_CLONE_DIR="$TARGET_REPO_DIR"
+          - export ARNICA_API_TOKEN="$ARNICA_API_TOKEN"
+          - export INPUT_REPOSITORY_URL="${INPUT_REPOSITORY_URL:-${BITBUCKET_GIT_HTTP_ORIGIN:-}}"
+          - export INPUT_BRANCH="${INPUT_BRANCH:-${BITBUCKET_BRANCH:-main}}"
+          - export INPUT_SCAN_PATH="${INPUT_SCAN_PATH:-.}"
+          - node dist/cli.js
+        artifacts:
+          - arnica-scan-summary.md
+          - .arnica-scan-outputs.env
+        variables:
+          ARNICA_API_TOKEN: $ARNICA_API_TOKEN
+          ARNICA_SCAN_REPO_URL: $ARNICA_SCAN_REPO_URL
+          ARNICA_SCAN_REF: $ARNICA_SCAN_REF
+```
+
+Required variables for this mode:
+
+- `ARNICA_API_TOKEN` (secured)
+- `ARNICA_SCAN_REPO_URL` (git URL to your private/public dependency-scan fork)
+- `ARNICA_SCAN_REF` (optional branch/tag/commit; defaults to `main`)
+
+### Outputs and summary
+
+Bitbucket Pipelines does not expose GitHub-style step outputs or Azure `##vso` variables. This integration:
+
+- Logs lines `ARNICA_OUTPUT <name>=<value>` for visibility in the build log.
+- Appends `name=value` lines to **`.arnica-scan-outputs.env`** under the clone directory (optional `source` in a later step, or keep via artifacts).
+- Writes **`arnica-scan-summary.md`** in the clone directory; list both files under `artifacts` if you want to download them.
+
+### Environment variables
+
+| Name                         | Required | Default                     | Description                                                                 |
+| ---------------------------- | :------: | --------------------------- | --------------------------------------------------------------------------- |
+| `ARNICA_API_TOKEN`           |   Yes    |                             | Arnica API token                                                            |
+| `INPUT_REPOSITORY_URL`       |   No*    |                             | Repository URL override                                                     |
+| `INPUT_BRANCH`               |   No*    |                             | Branch override                                                             |
+| `INPUT_SCAN_PATH`            |   No     | `.`                         | Directory path to scan                                                      |
+| `INPUT_API_BASE_URL`         |   No     | `https://api.app.arnica.io` | Arnica API base URL                                                         |
+| `INPUT_SCAN_TIMEOUT_SECONDS` |   No     | `900`                       | Timeout (seconds) for scan completion                                       |
+| `INPUT_ON_FINDINGS`          |   No     | `fail`                      | `fail`, `alert`, or `pass`                                                  |
+| `INPUT_DEBUG`                |   No     | `false`                     | Verbose API debug logs                                                      |
+
+\*On Bitbucket Pipelines, `INPUT_REPOSITORY_URL` / `INPUT_BRANCH` are auto-detected when unset.
+
+Repository URL detection fallback order:
+
+1. `BITBUCKET_GIT_HTTP_ORIGIN`
+2. `BITBUCKET_GIT_SSH_ORIGIN`
+3. `BITBUCKET_SERVER_URL` (or `BITBUCKET_BASE_URL`) + `BITBUCKET_REPO_FULL_NAME`
+4. `https://bitbucket.org/<BITBUCKET_REPO_FULL_NAME>`
+
+Branch detection fallback order:
+
+1. `BITBUCKET_BRANCH`
+2. `BITBUCKET_PR_SOURCE_BRANCH`
+3. `BITBUCKET_SOURCE_BRANCH`
+4. `BITBUCKET_BRANCH_NAME`
+
+### Example: scan a subdirectory, alert only
+
+Add to the same `script` or export env before `npx`:
+
+```yaml
+        script:
+          - export INPUT_SCAN_PATH="services/payments"
+          - export INPUT_ON_FINDINGS="alert"
+          - cd "$BITBUCKET_CLONE_DIR"
+          - npx --yes "@arnica-io/dependency-scan@1.0.30"
+```
+
+### Where to View Reports (Bitbucket)
+
+1. **Build logs**: `ARNICA_OUTPUT` lines and scan progress
+2. **Artifacts**: `arnica-scan-summary.md` if declared under `artifacts`
+3. **Arnica Dashboard**: Full vulnerability management at `https://app.arnica.io`
+
+### Troubleshooting (Bitbucket)
+
+- **Repository URL is missing**
+  - Set `INPUT_REPOSITORY_URL` explicitly in the step environment.
+  - Verify your runner exports one of: `BITBUCKET_GIT_HTTP_ORIGIN`, `BITBUCKET_GIT_SSH_ORIGIN`, or (`BITBUCKET_SERVER_URL` + `BITBUCKET_REPO_FULL_NAME`).
+- **Unexpected branch value in PR pipelines**
+  - PR pipelines may expose multiple branch variables depending on runner type.
+  - Set `INPUT_BRANCH` explicitly if you need strict source-branch mapping.
+- **No summary/output artifacts visible**
+  - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts`.
 
 ---
 

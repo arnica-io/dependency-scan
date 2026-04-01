@@ -16,6 +16,7 @@ Thanks for your interest in contributing! This repository hosts a GitHub Action 
 ### Linting and checks
 
 - CI runs action/workflow linting on push and PR via `.github/workflows/validate.yml`.
+- `pnpm run test` runs TypeScript `noEmit` checks and Node tests under `tests/` that require a prior `pnpm run build` (CI runs build before test).
 - Prefer adding tests or example workflows demonstrating new features when practical.
 
 ### Security
