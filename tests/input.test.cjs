@@ -6,6 +6,14 @@ const assert = require("node:assert");
 const { getValidatedInput } = require("../dist/input");
 
 const bitbucketEnvKeys = [
+  "GITHUB_ACTIONS",
+  "GITHUB_REPOSITORY",
+  "GITHUB_SERVER_URL",
+  "GITHUB_REF",
+  "GITHUB_REF_NAME",
+  "GITHUB_HEAD_REF",
+  "TF_BUILD",
+  "BUILD_BUILDID",
   "INPUT_REPOSITORY_URL",
   "INPUT_BRANCH",
   "INPUT_SCAN_PATH",
@@ -119,6 +127,32 @@ test("getValidatedInput derives Bitbucket Cloud repo URL from workspace and slug
   assert.strictEqual(input.branch, "master");
 });
 
+test("getValidatedInput derives GitHub repository URL and branch from env", () => {
+  process.env.GITHUB_ACTIONS = "true";
+  process.env.GITHUB_SERVER_URL = "https://github.com";
+  process.env.GITHUB_REPOSITORY = "arnica-io/dependency-scan";
+  process.env.GITHUB_REF_NAME = "feature/gh-branch";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://github.com/arnica-io/dependency-scan");
+  assert.strictEqual(input.branch, "feature/gh-branch");
+});
+
+test("getValidatedInput prefers GitHub head ref for pull request context", () => {
+  process.env.GITHUB_ACTIONS = "true";
+  process.env.GITHUB_SERVER_URL = "https://github.com";
+  process.env.GITHUB_REPOSITORY = "arnica-io/dependency-scan";
+  process.env.GITHUB_REF_NAME = "main";
+  process.env.GITHUB_HEAD_REF = "feature/from-pr";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.branch, "feature/from-pr");
+});
+
 test("getValidatedInput fails fast in Bitbucket environment without resolvable repo URL", () => {
   process.env.BITBUCKET_PIPELINE_UUID = "{uuid}";
   process.env.BITBUCKET_BRANCH = "main";
@@ -131,7 +165,7 @@ test("getValidatedInput fails fast in Bitbucket environment without resolvable r
     (error) => {
       assert.match(
         error.message,
-        /Repository URL is missing in Bitbucket environment/
+        /Repository URL is missing in CI environment/
       );
       return true;
     }
@@ -149,7 +183,26 @@ test("getValidatedInput treats BITBUCKET_BRANCH_NAME-only as Bitbucket environme
     (error) => {
       assert.match(
         error.message,
-        /Repository URL is missing in Bitbucket environment/
+        /Repository URL is missing in CI environment/
+      );
+      return true;
+    }
+  );
+});
+
+test("getValidatedInput fails fast in GitHub environment without resolvable repo URL", () => {
+  process.env.GITHUB_ACTIONS = "true";
+  process.env.GITHUB_REF_NAME = "main";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  assert.throws(
+    () => {
+      getValidatedInput(createPlatform());
+    },
+    (error) => {
+      assert.match(
+        error.message,
+        /Repository URL is missing in CI environment/
       );
       return true;
     }

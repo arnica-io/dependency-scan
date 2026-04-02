@@ -18,7 +18,14 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
 }
 
 export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
-  const isGitHub = Boolean(env.GITHUB_ACTIONS);
+  const isGitHub = Boolean(
+    env.GITHUB_ACTIONS ||
+      env.GITHUB_REPOSITORY ||
+      env.GITHUB_SERVER_URL ||
+      env.GITHUB_REF ||
+      env.GITHUB_REF_NAME ||
+      env.GITHUB_HEAD_REF
+  );
   if (isGitHub) {
     return new GitHubActionsPlatform();
   }

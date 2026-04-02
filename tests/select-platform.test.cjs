@@ -39,6 +39,14 @@ test("selectPlatform falls back to Azure when no GitHub/Bitbucket markers", () =
   assert.ok(platform instanceof AzureDevOpsPlatform);
 });
 
+test("selectPlatform picks GitHub when repository env exists", () => {
+  const platform = selectPlatform({
+    GITHUB_REPOSITORY: "arnica-io/dependency-scan",
+    GITHUB_SERVER_URL: "https://github.com",
+  });
+  assert.ok(platform instanceof GitHubActionsPlatform);
+});
+
 test("isBitbucketEnvironment returns true for BITBUCKET_BRANCH_NAME-only", () => {
   const isBitbucket = isBitbucketEnvironment({
     BITBUCKET_BRANCH_NAME: "feature/branch-only",

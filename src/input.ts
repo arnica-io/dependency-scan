@@ -40,6 +40,53 @@ function isBitbucketEnvironment(): boolean {
   );
 }
 
+function isGitHubEnvironment(): boolean {
+  return Boolean(
+    process.env.GITHUB_ACTIONS ||
+      process.env.GITHUB_REPOSITORY ||
+      process.env.GITHUB_SERVER_URL ||
+      process.env.GITHUB_REF ||
+      process.env.GITHUB_REF_NAME ||
+      process.env.GITHUB_HEAD_REF
+  );
+}
+
+function isAzureEnvironment(): boolean {
+  return Boolean(
+    process.env.TF_BUILD ||
+      process.env.BUILD_BUILDID ||
+      process.env.BUILD_REPOSITORY_URI ||
+      process.env.BUILD_SOURCEBRANCHNAME
+  );
+}
+
+function getGitHubRepositoryUrlFallback(): string {
+  if (!process.env.GITHUB_REPOSITORY) {
+    return "";
+  }
+
+  const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+  const trimmedServerUrl = serverUrl.replace(/\/+$/u, "");
+  return `${trimmedServerUrl}/${process.env.GITHUB_REPOSITORY}`;
+}
+
+function getGitHubBranchFallback(): string {
+  if (process.env.GITHUB_HEAD_REF) {
+    return process.env.GITHUB_HEAD_REF;
+  }
+
+  if (process.env.GITHUB_REF_NAME) {
+    return process.env.GITHUB_REF_NAME;
+  }
+
+  const ref = process.env.GITHUB_REF || "";
+  if (ref.startsWith("refs/heads/")) {
+    return ref.slice("refs/heads/".length);
+  }
+
+  return "";
+}
+
 function getBitbucketRepositoryUrlFallback(): string {
   const directUrl =
     process.env.BITBUCKET_GIT_HTTP_ORIGIN || process.env.BITBUCKET_GIT_SSH_ORIGIN;
@@ -129,12 +176,14 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   const input: DependencyScanInput = {
     repoUrl: normalizeRepositoryUrl(
       process.env.INPUT_REPOSITORY_URL ||
+        getGitHubRepositoryUrlFallback() ||
         process.env.BUILD_REPOSITORY_URI ||
         getBitbucketRepositoryUrlFallback() ||
         ""
     ),
     branch:
       process.env.INPUT_BRANCH ||
+      getGitHubBranchFallback() ||
       process.env.BUILD_SOURCEBRANCHNAME ||
       getBitbucketBranchFallback() ||
       "main",
@@ -184,9 +233,12 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     throw new Error(msg);
   }
 
-  if (isBitbucketEnvironment() && !input.repoUrl) {
+  const isKnownCiEnvironment =
+    isBitbucketEnvironment() || isGitHubEnvironment() || isAzureEnvironment();
+
+  if (isKnownCiEnvironment && !input.repoUrl) {
     const msg =
-      "Repository URL is missing in Bitbucket environment. Set INPUT_REPOSITORY_URL explicitly.";
+      "Repository URL is missing in CI environment. Set INPUT_REPOSITORY_URL explicitly.";
     platform.setFailed(msg);
     throw new Error(msg);
   }
