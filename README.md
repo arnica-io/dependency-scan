@@ -184,8 +184,6 @@ steps:
     displayName: Arnica dependency scan
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
-      INPUT_REPOSITORY_URL: $(Build.Repository.Uri)
-      INPUT_BRANCH: $(Build.SourceBranchName)
       INPUT_SCAN_PATH: "."
       INPUT_ON_FINDINGS: fail
 ```
@@ -303,8 +301,6 @@ pipelines:
           - export PATH="$SCAN_SRC_DIR/node_modules/.bin:$PATH"
           - export BITBUCKET_CLONE_DIR="$TARGET_REPO_DIR"
           - export ARNICA_API_TOKEN="$ARNICA_API_TOKEN"
-          - export INPUT_REPOSITORY_URL="${INPUT_REPOSITORY_URL:-${BITBUCKET_GIT_HTTP_ORIGIN:-}}"
-          - export INPUT_BRANCH="${INPUT_BRANCH:-${BITBUCKET_BRANCH:-main}}"
           - export INPUT_SCAN_PATH="${INPUT_SCAN_PATH:-.}"
           - node dist/cli.js
         artifacts:

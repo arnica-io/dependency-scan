@@ -3,6 +3,26 @@ import { Platform } from "./platform/platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
+function normalizeBitbucketCloudUrl(rawUrl: string): string {
+  if (!rawUrl) {
+    return rawUrl;
+  }
+
+  if (rawUrl.startsWith("git@bitbucket.org:")) {
+    return `https://bitbucket.org/${rawUrl.slice("git@bitbucket.org:".length)}`;
+  }
+
+  if (rawUrl.startsWith("ssh://git@bitbucket.org/")) {
+    return `https://bitbucket.org/${rawUrl.slice("ssh://git@bitbucket.org/".length)}`;
+  }
+
+  if (rawUrl.startsWith("http://bitbucket.org/")) {
+    return `https://bitbucket.org/${rawUrl.slice("http://bitbucket.org/".length)}`;
+  }
+
+  return rawUrl;
+}
+
 function isBitbucketEnvironment(): boolean {
   return Boolean(
     process.env.BITBUCKET_PIPELINE_UUID ||
@@ -54,15 +74,17 @@ function normalizeRepositoryUrl(rawUrl: string): string {
     return rawUrl;
   }
 
+  const bitbucketNormalized = normalizeBitbucketCloudUrl(rawUrl);
+
   try {
-    const parsed = new URL(rawUrl);
+    const parsed = new URL(bitbucketNormalized);
     // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): Strip embedded credentials from repository URLs before sending/logging
     parsed.username = "";
     parsed.password = "";
     return parsed.toString();
   } catch {
     // Fallback for non-URL inputs (or unusual URL formats): remove userinfo from https://user@host/...
-    return rawUrl.replace(/^https:\/\/[^/@]+@/u, "https://");
+    return bitbucketNormalized.replace(/^https:\/\/[^/@]+@/u, "https://");
   }
 }
 

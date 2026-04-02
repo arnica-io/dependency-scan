@@ -65,6 +65,28 @@ test("getValidatedInput uses Bitbucket Cloud URL and branch fallbacks", () => {
   assert.strictEqual(input.branch, "feature/branch");
 });
 
+test("getValidatedInput normalizes Bitbucket Cloud http URL to https", () => {
+  process.env.BITBUCKET_PIPELINE_UUID = "{uuid}";
+  process.env.BITBUCKET_GIT_HTTP_ORIGIN = "http://bitbucket.org/acme/http-repo.git";
+  process.env.BITBUCKET_BRANCH = "master";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://bitbucket.org/acme/http-repo.git");
+});
+
+test("getValidatedInput normalizes Bitbucket Cloud ssh URL to https", () => {
+  process.env.BITBUCKET_PIPELINE_UUID = "{uuid}";
+  process.env.BITBUCKET_GIT_SSH_ORIGIN = "git@bitbucket.org:acme/ssh-repo.git";
+  process.env.BITBUCKET_BRANCH = "master";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://bitbucket.org/acme/ssh-repo.git");
+});
+
 test("getValidatedInput derives Bitbucket Server repo URL from server + full name", () => {
   process.env.BITBUCKET_CLONE_DIR = "/opt/atlassian/pipelines/agent/build";
   process.env.BITBUCKET_SERVER_URL = "https://bitbucket.company.local/";
