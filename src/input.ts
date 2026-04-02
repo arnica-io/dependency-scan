@@ -28,6 +28,9 @@ function isBitbucketEnvironment(): boolean {
     process.env.BITBUCKET_PIPELINE_UUID ||
       process.env.BITBUCKET_CLONE_DIR ||
       process.env.BITBUCKET_REPO_FULL_NAME ||
+      process.env.BITBUCKET_WORKSPACE ||
+      process.env.BITBUCKET_REPO_OWNER ||
+      process.env.BITBUCKET_REPO_SLUG ||
       process.env.BITBUCKET_GIT_HTTP_ORIGIN ||
       process.env.BITBUCKET_GIT_SSH_ORIGIN ||
       process.env.BITBUCKET_BRANCH ||
@@ -44,7 +47,14 @@ function getBitbucketRepositoryUrlFallback(): string {
     return directUrl;
   }
 
-  const repoFullName = process.env.BITBUCKET_REPO_FULL_NAME;
+  const repoFullName =
+    process.env.BITBUCKET_REPO_FULL_NAME ||
+    (process.env.BITBUCKET_WORKSPACE && process.env.BITBUCKET_REPO_SLUG
+      ? `${process.env.BITBUCKET_WORKSPACE}/${process.env.BITBUCKET_REPO_SLUG}`
+      : "") ||
+    (process.env.BITBUCKET_REPO_OWNER && process.env.BITBUCKET_REPO_SLUG
+      ? `${process.env.BITBUCKET_REPO_OWNER}/${process.env.BITBUCKET_REPO_SLUG}`
+      : "");
   if (!repoFullName) {
     return "";
   }

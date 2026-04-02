@@ -26,6 +26,9 @@ const bitbucketEnvKeys = [
   "BITBUCKET_SOURCE_BRANCH",
   "BITBUCKET_BRANCH_NAME",
   "BITBUCKET_REPO_FULL_NAME",
+  "BITBUCKET_WORKSPACE",
+  "BITBUCKET_REPO_OWNER",
+  "BITBUCKET_REPO_SLUG",
   "BITBUCKET_SERVER_URL",
   "BITBUCKET_BASE_URL",
 ];
@@ -101,6 +104,19 @@ test("getValidatedInput derives Bitbucket Server repo URL from server + full nam
     "https://bitbucket.company.local/scm/team/project.git"
   );
   assert.strictEqual(input.branch, "feature/pr-source");
+});
+
+test("getValidatedInput derives Bitbucket Cloud repo URL from workspace and slug", () => {
+  process.env.BITBUCKET_PIPELINE_UUID = "{uuid}";
+  process.env.BITBUCKET_WORKSPACE = "shtrull";
+  process.env.BITBUCKET_REPO_SLUG = "argo-cd";
+  process.env.BITBUCKET_BRANCH = "master";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://bitbucket.org/shtrull/argo-cd");
+  assert.strictEqual(input.branch, "master");
 });
 
 test("getValidatedInput fails fast in Bitbucket environment without resolvable repo URL", () => {
