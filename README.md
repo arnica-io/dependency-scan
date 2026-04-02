@@ -132,6 +132,7 @@ Auto-detection sources when `REPOSITORY_URL` / `BRANCH` are not provided:
 - **GitHub**: `GITHUB_SERVER_URL`, `GITHUB_REPOSITORY`, `GITHUB_HEAD_REF` / `GITHUB_REF_NAME`
 - **Azure DevOps**: `BUILD_REPOSITORY_URI`, `BUILD_SOURCEBRANCHNAME`
 - **Bitbucket Cloud/Server**: `BITBUCKET_GIT_HTTP_ORIGIN`, `BITBUCKET_GIT_SSH_ORIGIN`, `BITBUCKET_REPO_FULL_NAME`, `BITBUCKET_WORKSPACE`, `BITBUCKET_REPO_OWNER`, `BITBUCKET_REPO_SLUG`, `BITBUCKET_BRANCH`, `BITBUCKET_PR_SOURCE_BRANCH`, `BITBUCKET_SOURCE_BRANCH`, `BITBUCKET_BRANCH_NAME`
+- **Bitbucket Server (HTTPS clone URL synthesis):** `BITBUCKET_SERVER_URL` or `BITBUCKET_BASE_URL` with `BITBUCKET_REPO_FULL_NAME`; optional `BITBUCKET_SERVER_SCM_PREFIX` (default `scm`) when the Git HTTP path is not `/scm/...`
 
 ### Permissions
 
@@ -263,6 +264,8 @@ Use the **published npm package** with `npx`, same as Azure DevOps.
 - **Bitbucket Server/Data Center runners**: also supports `BITBUCKET_GIT_SSH_ORIGIN` and derives a repository URL from `BITBUCKET_SERVER_URL` + `BITBUCKET_REPO_FULL_NAME` when needed.
 
 You can always override detection with `REPOSITORY_URL` and `BRANCH`.
+
+**Bitbucket Server URL shape:** Auto-derived URLs use `{BITBUCKET_SERVER_URL}/{BITBUCKET_SERVER_SCM_PREFIX}/{BITBUCKET_REPO_FULL_NAME}.git` with prefix defaulting to `scm` (common for Atlassian Bitbucket Server). Some installations use a different path segment (for example `git`); set `BITBUCKET_SERVER_SCM_PREFIX` to match yours. Project-key layouts, HTTP(S) proxies, or non-standard Git HTTP paths may still require setting `REPOSITORY_URL` explicitly.
 
 ### Prerequisites
 

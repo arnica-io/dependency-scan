@@ -19,6 +19,11 @@ Thanks for your interest in contributing! This repository hosts a GitHub Action 
 - `pnpm run test` runs TypeScript `noEmit` checks and Node tests under `tests/` that require a prior `pnpm run build` (CI runs build before test).
 - Prefer adding tests or example workflows demonstrating new features when practical.
 
+### Verification expectations
+
+- **Required for every PR:** `pnpm run build` and `pnpm run test` (mirrors CI). Platform detection, env parsing, and URL fallbacks are covered by unit tests under `tests/`.
+- **Optional smoke tests:** Running the scanner end-to-end in GitHub Actions, Azure DevOps, or Bitbucket Pipelines is encouraged for large CI-facing changes or before a release, but it is not a merge gate when automated tests already cover the logic.
+
 ### Security
 
 - Do not echo secrets or tokens. Avoid adding commands that could print sensitive data.

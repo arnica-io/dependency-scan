@@ -54,6 +54,7 @@ const bitbucketEnvKeys = [
   "BITBUCKET_REPO_SLUG",
   "BITBUCKET_SERVER_URL",
   "BITBUCKET_BASE_URL",
+  "BITBUCKET_SERVER_SCM_PREFIX",
 ];
 
 function clearTestEnv() {
@@ -131,6 +132,22 @@ test("getValidatedInput derives Bitbucket Server repo URL from server + full nam
     "https://bitbucket.company.local/scm/team/project.git"
   );
   assert.strictEqual(input.branch, "feature/pr-source");
+});
+
+test("getValidatedInput uses BITBUCKET_SERVER_SCM_PREFIX for Bitbucket Server URL", () => {
+  process.env.BITBUCKET_CLONE_DIR = "/opt/atlassian/pipelines/agent/build";
+  process.env.BITBUCKET_SERVER_URL = "https://bitbucket.company.local/";
+  process.env.BITBUCKET_SERVER_SCM_PREFIX = "git";
+  process.env.BITBUCKET_REPO_FULL_NAME = "team/project";
+  process.env.BITBUCKET_BRANCH = "main";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(
+    input.repoUrl,
+    "https://bitbucket.company.local/git/team/project.git"
+  );
 });
 
 test("getValidatedInput derives Bitbucket Cloud repo URL from workspace and slug", () => {

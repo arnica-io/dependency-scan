@@ -3,9 +3,11 @@
 const { test } = require("node:test");
 const assert = require("node:assert");
 
-const { selectPlatform, isBitbucketEnvironment } = require(
-  "../dist/platform/select-platform"
-);
+const {
+  selectPlatform,
+  isBitbucketEnvironment,
+  isGitHubEnvironment,
+} = require("../dist/platform/select-platform");
 const { GitHubActionsPlatform } = require("../dist/platform/github");
 const { BitbucketPipelinesPlatform } = require(
   "../dist/platform/bitbucket-pipelines"
@@ -68,4 +70,17 @@ test("isBitbucketEnvironment returns true for BITBUCKET_BRANCH_NAME-only", () =>
     BITBUCKET_BRANCH_NAME: "feature/branch-only",
   });
   assert.strictEqual(isBitbucket, true);
+});
+
+test("isGitHubEnvironment returns true when GITHUB_REPOSITORY is set", () => {
+  assert.strictEqual(
+    isGitHubEnvironment({
+      GITHUB_REPOSITORY: "acme/demo",
+    }),
+    true
+  );
+});
+
+test("isGitHubEnvironment returns false for empty env", () => {
+  assert.strictEqual(isGitHubEnvironment({}), false);
 });

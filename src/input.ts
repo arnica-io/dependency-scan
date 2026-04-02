@@ -1,6 +1,9 @@
 import * as path from "path";
 import { Platform } from "./platform/platform";
-import { isBitbucketEnvironment } from "./platform/select-platform";
+import {
+  isBitbucketEnvironment,
+  isGitHubEnvironment,
+} from "./platform/select-platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
@@ -22,17 +25,6 @@ function normalizeBitbucketCloudUrl(rawUrl: string): string {
   }
 
   return rawUrl;
-}
-
-function isGitHubEnvironment(): boolean {
-  return Boolean(
-    process.env.GITHUB_ACTIONS ||
-      process.env.GITHUB_REPOSITORY ||
-      process.env.GITHUB_SERVER_URL ||
-      process.env.GITHUB_REF ||
-      process.env.GITHUB_REF_NAME ||
-      process.env.GITHUB_HEAD_REF
-  );
 }
 
 function isAzureEnvironment(): boolean {
@@ -94,7 +86,10 @@ function getBitbucketRepositoryUrlFallback(): string {
     process.env.BITBUCKET_SERVER_URL || process.env.BITBUCKET_BASE_URL;
   if (bitbucketServerBaseUrl) {
     const trimmedBase = bitbucketServerBaseUrl.replace(/\/+$/u, "");
-    return `${trimmedBase}/scm/${repoFullName}.git`;
+    const scmPrefix = (
+      process.env.BITBUCKET_SERVER_SCM_PREFIX || "scm"
+    ).replace(/^\/+|\/+$/gu, "");
+    return `${trimmedBase}/${scmPrefix}/${repoFullName}.git`;
   }
 
   return `https://bitbucket.org/${repoFullName}`;
@@ -249,7 +244,7 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
 
   const isKnownCiEnvironment =
     isBitbucketEnvironment(process.env) ||
-    isGitHubEnvironment() ||
+    isGitHubEnvironment(process.env) ||
     isAzureEnvironment();
 
   if (isKnownCiEnvironment && !input.repoUrl) {

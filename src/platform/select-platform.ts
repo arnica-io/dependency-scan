@@ -3,6 +3,17 @@ import { BitbucketPipelinesPlatform } from "./bitbucket-pipelines";
 import { GitHubActionsPlatform } from "./github";
 import { Platform } from "./platform";
 
+export function isGitHubEnvironment(env: NodeJS.ProcessEnv): boolean {
+  return Boolean(
+    env.GITHUB_ACTIONS ||
+      env.GITHUB_REPOSITORY ||
+      env.GITHUB_SERVER_URL ||
+      env.GITHUB_REF ||
+      env.GITHUB_REF_NAME ||
+      env.GITHUB_HEAD_REF
+  );
+}
+
 export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
   return Boolean(
     env.BITBUCKET_PIPELINE_UUID ||
@@ -21,15 +32,7 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
 }
 
 export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
-  const isGitHub = Boolean(
-    env.GITHUB_ACTIONS ||
-      env.GITHUB_REPOSITORY ||
-      env.GITHUB_SERVER_URL ||
-      env.GITHUB_REF ||
-      env.GITHUB_REF_NAME ||
-      env.GITHUB_HEAD_REF
-  );
-  if (isGitHub) {
+  if (isGitHubEnvironment(env)) {
     return new GitHubActionsPlatform();
   }
 
