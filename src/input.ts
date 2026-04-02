@@ -233,6 +233,13 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     throw new Error(msg);
   }
 
+  if (input.apiToken.startsWith("$")) {
+    const msg =
+      "API token appears to be an unresolved variable placeholder. Set ARNICA_API_TOKEN to the real token value, not '$ARNICA_API_TOKEN'.";
+    platform.setFailed(msg);
+    throw new Error(msg);
+  }
+
   const isKnownCiEnvironment =
     isBitbucketEnvironment() || isGitHubEnvironment() || isAzureEnvironment();
 

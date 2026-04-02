@@ -208,3 +208,23 @@ test("getValidatedInput fails fast in GitHub environment without resolvable repo
     }
   );
 });
+
+test("getValidatedInput fails fast when API token is unresolved placeholder", () => {
+  process.env.BITBUCKET_PIPELINE_UUID = "{uuid}";
+  process.env.BITBUCKET_GIT_HTTP_ORIGIN = "https://bitbucket.org/acme/demo-repo.git";
+  process.env.BITBUCKET_BRANCH = "main";
+  process.env.ARNICA_API_TOKEN = "$ARNICA_API_TOKEN";
+
+  assert.throws(
+    () => {
+      getValidatedInput(createPlatform());
+    },
+    (error) => {
+      assert.match(
+        error.message,
+        /unresolved variable placeholder/
+      );
+      return true;
+    }
+  );
+});
