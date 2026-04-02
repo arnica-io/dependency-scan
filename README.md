@@ -119,9 +119,9 @@ Use these env vars when running the scanner via `npx @arnica-io/dependency-scan`
 | `ARNICA_API_BASE_URL`    |    No    | `https://api.app.arnica.io` | Arnica API base URL                                                         |
 | `REPOSITORY_URL`         |    No    | auto-detected               | Repository URL override                                                     |
 | `BRANCH`                 |    No    | auto-detected               | Branch override                                                             |
-| `SCAN_PATH`              |    No    | `.`                         | Directory path to scan                                                      |
-| `SCAN_TIMEOUT_SECONDS`   |    No    | `900`                       | Timeout (seconds) for scan completion                                       |
-| `ARNICA_ON_FINDINGS`     |    No    | `fail`                      | `fail`, `alert`, or `pass`                                                  |
+| `ARNICA_SCAN_PATH`       |    No    | `.`                         | Directory path to scan (`SCAN_PATH` also accepted)                          |
+| `ARNICA_SCAN_TIMEOUT_SECONDS` | No  | `900`                       | Scan wait timeout in seconds (`SCAN_TIMEOUT_SECONDS` also accepted)         |
+| `ARNICA_ON_FINDINGS`     |    No    | `fail`                      | `fail`, `alert`, or `pass` (`ON_FINDINGS` also accepted)                    |
 | `ARNICA_DEBUG_MODE`      |    No    | `false`                     | Verbose API debug logs                                                      |
 | `ARNICA_DEBUG`           |    No    | `false`                     | Same as `ARNICA_DEBUG_MODE` when set to `true`                              |
 
@@ -235,7 +235,7 @@ Force npmjs for this step:
 
 ### Advanced: build from a git checkout (lockfile-pinned)
 
-If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same CLI env vars (`API_TOKEN`, `REPOSITORY_URL`, `BRANCH`, `SCAN_PATH`, `ARNICA_ON_FINDINGS`, etc.) from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
+If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same CLI env vars (`ARNICA_API_TOKEN`, `REPOSITORY_URL`, `BRANCH`, `ARNICA_SCAN_PATH`, `ARNICA_ON_FINDINGS`, etc.) from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
 
 Environment variables are documented once in **CLI Environment Variables (All Platforms)** above.
 
@@ -244,7 +244,7 @@ Environment variables are documented once in **CLI Environment Variables (All Pl
 Add to the same `env` block as the main example:
 
 ```yaml
-      SCAN_PATH: "services/payments"
+      ARNICA_SCAN_PATH: "services/payments"
       ARNICA_ON_FINDINGS: alert
 ```
 
@@ -354,7 +354,7 @@ Add to the same `script` or export env before `npx`:
 
 ```yaml
         script:
-          - export SCAN_PATH="services/payments"
+          - export ARNICA_SCAN_PATH="services/payments"
           - export ARNICA_ON_FINDINGS="alert"
           - cd "$BITBUCKET_CLONE_DIR"
           - npx --yes "@arnica-io/dependency-scan@1.0.30"

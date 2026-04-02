@@ -25,11 +25,11 @@ steps:
       npx --yes "@arnica-io/dependency-scan@1.0.30"
     displayName: Arnica dependency scan
     env:
-      # Required secret token from variable group.
-      API_TOKEN: $(ARNICA_API_TOKEN)
-      # Path example: scan a subdirectory only.
-      SCAN_PATH: services/payments
-      # Optional: fail (default), alert, or pass.
-      ON_FINDINGS: fail
-      # Optional: set staging/prod API endpoint.
+      # Required: map the variable-group secret into the CLI env name.
+      ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
+      # Optional: scan a subdirectory only (alias: SCAN_PATH).
+      ARNICA_SCAN_PATH: services/payments
+      # Optional: fail (default), alert, or pass (alias: ON_FINDINGS).
+      ARNICA_ON_FINDINGS: fail
+      # Optional: staging/prod API endpoint.
       # ARNICA_API_BASE_URL: https://api.app.arnica.io
