@@ -1,0 +1,23 @@
+image: node:24
+
+pipelines:
+  default:
+    - step:
+        name: Arnica dependency scan
+        script:
+          - cd "$BITBUCKET_CLONE_DIR"
+          - npx --yes "@arnica-io/dependency-scan@1.0.30"
+        artifacts:
+          - arnica-scan-summary.md
+          - .arnica-scan-outputs.env
+        # Add these as Bitbucket repository/workspace variables:
+        # - ARNICA_API_TOKEN (secured secret)
+        # - Optional API_BASE_URL (for staging/prod endpoint override)
+        # - Optional SCAN_PATH (path example below)
+        #
+        # Example optional overrides:
+        # script:
+        #   - export SCAN_PATH="services/payments"
+        #   - export ON_FINDINGS="alert"
+        #   - cd "$BITBUCKET_CLONE_DIR"
+        #   - npx --yes "@arnica-io/dependency-scan@1.0.30"

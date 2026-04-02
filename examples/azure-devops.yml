@@ -1,0 +1,35 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Add this variable group in Azure DevOps Library.
+  # It should contain secret ARNICA_API_TOKEN.
+  - group: arnica-secrets
+
+steps:
+  - checkout: self
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "24.x"
+    displayName: Use Node 24
+
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)"
+      npx --yes "@arnica-io/dependency-scan@1.0.30"
+    displayName: Arnica dependency scan
+    env:
+      # Required secret token from variable group.
+      API_TOKEN: $(ARNICA_API_TOKEN)
+      # Path example: scan a subdirectory only.
+      SCAN_PATH: services/payments
+      # Optional: fail (default), alert, or pass.
+      ON_FINDINGS: fail
+      # Optional: set staging/prod API endpoint.
+      # API_BASE_URL: https://api.app.arnica.io

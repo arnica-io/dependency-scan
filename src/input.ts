@@ -166,16 +166,25 @@ export interface DependencyScanInput {
 export function getValidatedInput(platform: Platform): DependencyScanInput {
   const workspacePath = platform.getWorkspacePath();
 
-  const scanPath = process.env.INPUT_SCAN_PATH || ".";
+  const scanPath =
+    process.env.INPUT_SCAN_PATH ||
+    process.env.SCAN_PATH ||
+    process.env.ARNICA_SCAN_PATH ||
+    ".";
 
   const scanTimeoutSeconds = parseInt(
-    process.env.INPUT_SCAN_TIMEOUT_SECONDS || "900",
+    process.env.INPUT_SCAN_TIMEOUT_SECONDS ||
+      process.env.SCAN_TIMEOUT_SECONDS ||
+      process.env.ARNICA_SCAN_TIMEOUT_SECONDS ||
+      "900",
     10
   );
 
   const input: DependencyScanInput = {
     repoUrl: normalizeRepositoryUrl(
       process.env.INPUT_REPOSITORY_URL ||
+        process.env.REPOSITORY_URL ||
+        process.env.ARNICA_REPOSITORY_URL ||
         getGitHubRepositoryUrlFallback() ||
         process.env.BUILD_REPOSITORY_URI ||
         getBitbucketRepositoryUrlFallback() ||
@@ -183,6 +192,8 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     ),
     branch:
       process.env.INPUT_BRANCH ||
+      process.env.BRANCH ||
+      process.env.ARNICA_BRANCH ||
       getGitHubBranchFallback() ||
       process.env.BUILD_SOURCEBRANCHNAME ||
       getBitbucketBranchFallback() ||
@@ -193,12 +204,25 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     ),
     apiBaseUrl:
       process.env.INPUT_API_BASE_URL ||
+      process.env.API_BASE_URL ||
       process.env.ARNICA_API_BASE_URL ||
       "https://api.app.arnica.io",
     scanTimeoutSeconds,
-    apiToken: process.env.INPUT_API_TOKEN || process.env.ARNICA_API_TOKEN || "",
-    onFindings: process.env.INPUT_ON_FINDINGS || "fail",
-    debug: process.env.INPUT_DEBUG === "true",
+    apiToken:
+      process.env.INPUT_API_TOKEN ||
+      process.env.API_TOKEN ||
+      process.env.ARNICA_API_TOKEN ||
+      "",
+    onFindings:
+      process.env.INPUT_ON_FINDINGS ||
+      process.env.ON_FINDINGS ||
+      process.env.ARNICA_ON_FINDINGS ||
+      "fail",
+    debug:
+      process.env.INPUT_DEBUG === "true" ||
+      process.env.ARNICA_DEBUG_MODE === "true" ||
+      process.env.DEBUG === "true" ||
+      process.env.ARNICA_DEBUG === "true",
   };
 
   if (input.debug) {
@@ -245,7 +269,7 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
 
   if (isKnownCiEnvironment && !input.repoUrl) {
     const msg =
-      "Repository URL is missing in CI environment. Set INPUT_REPOSITORY_URL explicitly.";
+      "Repository URL is missing in CI environment. Set REPOSITORY_URL explicitly.";
     platform.setFailed(msg);
     throw new Error(msg);
   }

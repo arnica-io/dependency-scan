@@ -20,7 +20,7 @@ export class BitbucketPipelinesPlatform implements Platform {
     }
     this.didWarnMissingWorkspace = true;
     console.warn(
-      `Bitbucket workspace path is unavailable while ${context}. Set BITBUCKET_CLONE_DIR or INPUT_REPOSITORY_URL explicitly.`
+      `Bitbucket workspace path is unavailable while ${context}. Set BITBUCKET_CLONE_DIR or REPOSITORY_URL explicitly.`
     );
   }
 
