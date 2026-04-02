@@ -1,0 +1,38 @@
+name: Arnica Dependency Security Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run Arnica dependency scan
+        id: arnica
+        uses: arnica-io/dependency-scan@35465acb89aaaad9de1bd6be79cb8f011267978a # v1.0.30
+        env:
+          # Required secret: create this in GitHub repository secrets.
+          ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
+        with:
+          repository-url: ${{ github.server_url }}/${{ github.repository }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          # Path example: scan only a service directory instead of full repo.
+          scan-path: services/payments
+          # Optional: fail (default), alert, or pass
+          on-findings: fail
+
+      - name: Print scan outputs
+        run: |
+          echo "Scan ID: ${{ steps.arnica.outputs['scan-id'] }}"
+          echo "Status: ${{ steps.arnica.outputs.status }}"

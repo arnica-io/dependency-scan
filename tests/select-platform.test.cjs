@@ -1,0 +1,86 @@
+"use strict";
+
+const { test } = require("node:test");
+const assert = require("node:assert");
+
+const {
+  selectPlatform,
+  isBitbucketEnvironment,
+  isGitHubEnvironment,
+} = require("../dist/platform/select-platform");
+const { GitHubActionsPlatform } = require("../dist/platform/github");
+const { BitbucketPipelinesPlatform } = require(
+  "../dist/platform/bitbucket-pipelines"
+);
+const { AzureDevOpsPlatform } = require("../dist/platform/azure-devops");
+
+test("selectPlatform prefers GitHub when GitHub and Bitbucket env vars coexist", () => {
+  const platform = selectPlatform({
+    GITHUB_ACTIONS: "true",
+    BITBUCKET_PIPELINE_UUID: "{uuid}",
+  });
+  assert.ok(platform instanceof GitHubActionsPlatform);
+});
+
+test("selectPlatform picks Bitbucket with pipeline UUID", () => {
+  const platform = selectPlatform({
+    BITBUCKET_PIPELINE_UUID: "{uuid}",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
+test("selectPlatform picks Bitbucket with repo full name only", () => {
+  const platform = selectPlatform({
+    BITBUCKET_REPO_FULL_NAME: "team/repo",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
+test("selectPlatform falls back to Azure when no GitHub/Bitbucket markers", () => {
+  const platform = selectPlatform({});
+  assert.ok(platform instanceof AzureDevOpsPlatform);
+});
+
+test("selectPlatform picks Bitbucket with workspace and slug only", () => {
+  const platform = selectPlatform({
+    BITBUCKET_WORKSPACE: "acme",
+    BITBUCKET_REPO_SLUG: "demo",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
+test("selectPlatform picks Bitbucket with repo owner and slug only", () => {
+  const platform = selectPlatform({
+    BITBUCKET_REPO_OWNER: "acme",
+    BITBUCKET_REPO_SLUG: "demo",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
+test("selectPlatform picks GitHub when repository env exists", () => {
+  const platform = selectPlatform({
+    GITHUB_REPOSITORY: "arnica-io/dependency-scan",
+    GITHUB_SERVER_URL: "https://github.com",
+  });
+  assert.ok(platform instanceof GitHubActionsPlatform);
+});
+
+test("isBitbucketEnvironment returns true for BITBUCKET_BRANCH_NAME-only", () => {
+  const isBitbucket = isBitbucketEnvironment({
+    BITBUCKET_BRANCH_NAME: "feature/branch-only",
+  });
+  assert.strictEqual(isBitbucket, true);
+});
+
+test("isGitHubEnvironment returns true when GITHUB_REPOSITORY is set", () => {
+  assert.strictEqual(
+    isGitHubEnvironment({
+      GITHUB_REPOSITORY: "acme/demo",
+    }),
+    true
+  );
+});
+
+test("isGitHubEnvironment returns false for empty env", () => {
+  assert.strictEqual(isGitHubEnvironment({}), false);
+});

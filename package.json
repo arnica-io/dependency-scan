@@ -1,7 +1,7 @@
 {
   "name": "@arnica-io/dependency-scan",
   "version": "1.0.0",
-  "description": "Arnica dependency security scan for GitHub Actions and Azure DevOps pipelines",
+  "description": "Arnica dependency security scan for GitHub Actions, Azure DevOps, and Bitbucket Pipelines",
   "main": "dist/cli.js",
   "bin": {
     "arnica-scan": "dist/cli.js"
@@ -23,7 +23,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "scan": "node dist/cli.js",
-    "test": "pnpm run typecheck"
+    "test": "pnpm run typecheck && node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@actions/core": "^2.0.3",
