@@ -1,5 +1,6 @@
 import * as path from "path";
 import { Platform } from "./platform/platform";
+import { isBitbucketEnvironment } from "./platform/select-platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
 
@@ -21,23 +22,6 @@ function normalizeBitbucketCloudUrl(rawUrl: string): string {
   }
 
   return rawUrl;
-}
-
-function isBitbucketEnvironment(): boolean {
-  return Boolean(
-    process.env.BITBUCKET_PIPELINE_UUID ||
-      process.env.BITBUCKET_CLONE_DIR ||
-      process.env.BITBUCKET_REPO_FULL_NAME ||
-      process.env.BITBUCKET_WORKSPACE ||
-      process.env.BITBUCKET_REPO_OWNER ||
-      process.env.BITBUCKET_REPO_SLUG ||
-      process.env.BITBUCKET_GIT_HTTP_ORIGIN ||
-      process.env.BITBUCKET_GIT_SSH_ORIGIN ||
-      process.env.BITBUCKET_BRANCH ||
-      process.env.BITBUCKET_PR_SOURCE_BRANCH ||
-      process.env.BITBUCKET_SOURCE_BRANCH ||
-      process.env.BITBUCKET_BRANCH_NAME
-  );
 }
 
 function isGitHubEnvironment(): boolean {
@@ -221,7 +205,6 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     debug:
       process.env.INPUT_DEBUG === "true" ||
       process.env.ARNICA_DEBUG_MODE === "true" ||
-      process.env.DEBUG === "true" ||
       process.env.ARNICA_DEBUG === "true",
   };
 
@@ -265,7 +248,9 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   }
 
   const isKnownCiEnvironment =
-    isBitbucketEnvironment() || isGitHubEnvironment() || isAzureEnvironment();
+    isBitbucketEnvironment(process.env) ||
+    isGitHubEnvironment() ||
+    isAzureEnvironment();
 
   if (isKnownCiEnvironment && !input.repoUrl) {
     const msg =

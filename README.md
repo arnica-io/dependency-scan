@@ -123,6 +123,9 @@ Use these env vars when running the scanner via `npx @arnica-io/dependency-scan`
 | `SCAN_TIMEOUT_SECONDS`   |    No    | `900`                       | Timeout (seconds) for scan completion                                       |
 | `ARNICA_ON_FINDINGS`     |    No    | `fail`                      | `fail`, `alert`, or `pass`                                                  |
 | `ARNICA_DEBUG_MODE`      |    No    | `false`                     | Verbose API debug logs                                                      |
+| `ARNICA_DEBUG`           |    No    | `false`                     | Same as `ARNICA_DEBUG_MODE` when set to `true`                              |
+
+Generic `DEBUG` is intentionally ignored so unrelated tools that set `DEBUG=true` do not enable Arnica verbose logging.
 
 Auto-detection sources when `REPOSITORY_URL` / `BRANCH` are not provided:
 

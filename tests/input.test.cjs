@@ -146,6 +146,18 @@ test("getValidatedInput derives Bitbucket Cloud repo URL from workspace and slug
   assert.strictEqual(input.branch, "master");
 });
 
+test("getValidatedInput treats workspace and slug as Bitbucket CI without pipeline UUID", () => {
+  process.env.BITBUCKET_WORKSPACE = "shtrull";
+  process.env.BITBUCKET_REPO_SLUG = "argo-cd";
+  process.env.BITBUCKET_BRANCH = "master";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://bitbucket.org/shtrull/argo-cd");
+  assert.strictEqual(input.branch, "master");
+});
+
 test("getValidatedInput derives GitHub repository URL and branch from env", () => {
   process.env.GITHUB_ACTIONS = "true";
   process.env.GITHUB_SERVER_URL = "https://github.com";
@@ -176,6 +188,16 @@ test("getValidatedInput supports generic CLI env names", () => {
   assert.strictEqual(input.scanTimeoutSeconds, 1200);
   assert.strictEqual(input.onFindings, "alert");
   assert.strictEqual(input.debug, true);
+});
+
+test("getValidatedInput does not enable debug from generic DEBUG env alone", () => {
+  process.env.REPOSITORY_URL = "https://bitbucket.org/acme/alias-repo";
+  process.env.DEBUG = "true";
+  process.env.API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.debug, false);
 });
 
 test("getValidatedInput keeps legacy INPUT_* compatibility", () => {

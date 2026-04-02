@@ -8,6 +8,9 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
     env.BITBUCKET_PIPELINE_UUID ||
       env.BITBUCKET_CLONE_DIR ||
       env.BITBUCKET_REPO_FULL_NAME ||
+      env.BITBUCKET_WORKSPACE ||
+      env.BITBUCKET_REPO_OWNER ||
+      env.BITBUCKET_REPO_SLUG ||
       env.BITBUCKET_GIT_HTTP_ORIGIN ||
       env.BITBUCKET_GIT_SSH_ORIGIN ||
       env.BITBUCKET_BRANCH ||

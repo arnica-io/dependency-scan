@@ -39,6 +39,22 @@ test("selectPlatform falls back to Azure when no GitHub/Bitbucket markers", () =
   assert.ok(platform instanceof AzureDevOpsPlatform);
 });
 
+test("selectPlatform picks Bitbucket with workspace and slug only", () => {
+  const platform = selectPlatform({
+    BITBUCKET_WORKSPACE: "acme",
+    BITBUCKET_REPO_SLUG: "demo",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
+test("selectPlatform picks Bitbucket with repo owner and slug only", () => {
+  const platform = selectPlatform({
+    BITBUCKET_REPO_OWNER: "acme",
+    BITBUCKET_REPO_SLUG: "demo",
+  });
+  assert.ok(platform instanceof BitbucketPipelinesPlatform);
+});
+
 test("selectPlatform picks GitHub when repository env exists", () => {
   const platform = selectPlatform({
     GITHUB_REPOSITORY: "arnica-io/dependency-scan",
