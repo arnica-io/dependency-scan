@@ -1,6 +1,6 @@
 "use strict";
 
-const { test, afterEach } = require("node:test");
+const { test, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert");
 
 const { getValidatedInput } = require("../dist/input");
@@ -73,6 +73,10 @@ function createPlatform() {
     writeSummary: async () => {},
   };
 }
+
+beforeEach(() => {
+  clearTestEnv();
+});
 
 afterEach(() => {
   clearTestEnv();
