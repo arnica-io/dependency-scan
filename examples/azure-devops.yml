@@ -32,4 +32,4 @@ steps:
       # Optional: fail (default), alert, or pass.
       ON_FINDINGS: fail
       # Optional: set staging/prod API endpoint.
-      # API_BASE_URL: https://api.app.arnica.io
+      # ARNICA_API_BASE_URL: https://api.app.arnica.io

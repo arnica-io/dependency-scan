@@ -12,7 +12,7 @@ pipelines:
           - .arnica-scan-outputs.env
         # Add these as Bitbucket repository/workspace variables:
         # - ARNICA_API_TOKEN (secured secret)
-        # - Optional API_BASE_URL (for staging/prod endpoint override)
+        # - Optional ARNICA_API_BASE_URL (for staging/prod endpoint override)
         # - Optional SCAN_PATH (path example below)
         #
         # Example optional overrides:
