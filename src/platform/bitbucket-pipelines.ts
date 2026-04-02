@@ -100,6 +100,12 @@ export class BitbucketPipelinesPlatform implements Platform {
 
   async writeSummary(markdown: string): Promise<void> {
     this.summaryContent += markdown;
+    const trimmedMarkdown = markdown.trim();
+    if (trimmedMarkdown) {
+      console.log("========== Arnica Scan Summary ==========");
+      console.log(trimmedMarkdown);
+      console.log("========================================");
+    }
 
     const ws = this.getWorkspacePath();
     if (!ws) {
