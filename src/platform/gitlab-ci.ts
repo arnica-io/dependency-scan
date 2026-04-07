@@ -6,11 +6,23 @@ import { Platform } from "./platform";
 
 export class GitLabCIPlatform implements Platform {
   private summaryContent = "";
+  private didWarnMissingWorkspace = false;
   private didInitializeOutputsFile = false;
+
+  private warnMissingWorkspace(context: string): void {
+    if (this.didWarnMissingWorkspace) {
+      return;
+    }
+    this.didWarnMissingWorkspace = true;
+    console.warn(
+      `GitLab workspace path is unavailable while ${context}. Ensure CI_PROJECT_DIR is set.`
+    );
+  }
 
   private getOutputsFilePath(): string {
     const ws = this.getWorkspacePath();
     if (!ws) {
+      this.warnMissingWorkspace("writing outputs");
       return "";
     }
     return path.join(ws, ".arnica-scan-outputs.env");
@@ -36,7 +48,7 @@ export class GitLabCIPlatform implements Platform {
           this.didInitializeOutputsFile = true;
         }
         fs.appendFileSync(outPath, line, "utf-8");
-      } catch (error) {
+      } catch (error: unknown) {
         console.warn(
           `setOutput[gitlab][${name}] failed to persist '${outPath}', switching to log-only output`,
           { error }
@@ -95,13 +107,21 @@ export class GitLabCIPlatform implements Platform {
 
     const ws = this.getWorkspacePath();
     if (!ws) {
+      this.warnMissingWorkspace("writing summary");
       return;
     }
 
     const summaryPath = path.join(ws, "arnica-scan-summary.md");
-    await fsPromises.writeFile(summaryPath, this.summaryContent, "utf-8");
-    console.log(
-      `Arnica scan summary written to ${summaryPath}. Add this file to your pipeline artifacts if you want to retain it.`
-    );
+    try {
+      await fsPromises.writeFile(summaryPath, this.summaryContent, "utf-8");
+      console.log(
+        `Arnica scan summary written to ${summaryPath}. Add this file to your pipeline artifacts if you want to retain it.`
+      );
+    } catch (error: unknown) {
+      console.warn(
+        `writeSummary[gitlab] failed to write summary to '${summaryPath}'`,
+        { error }
+      );
+    }
   }
 }

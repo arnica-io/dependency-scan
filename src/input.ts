@@ -107,21 +107,25 @@ function getBitbucketBranchFallback(): string {
 }
 
 function getGitLabRepositoryUrlFallback(): string {
+  // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): CI_REPOSITORY_URL may embed CI job tokens — caller MUST pass through normalizeRepositoryUrl()
   const ciRepoUrl = process.env.CI_REPOSITORY_URL;
   if (ciRepoUrl) {
-    // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): GitLab CI_REPOSITORY_URL may embed CI job tokens — strip via normalizeRepositoryUrl
     return ciRepoUrl;
   }
   return process.env.CI_PROJECT_URL || "";
 }
 
 function getGitLabBranchFallback(): string {
-  return (
-    process.env.CI_COMMIT_BRANCH ||
-    process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ||
-    process.env.CI_COMMIT_REF_NAME ||
-    ""
-  );
+  if (process.env.CI_COMMIT_BRANCH) {
+    return process.env.CI_COMMIT_BRANCH;
+  }
+  if (process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME) {
+    return process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME;
+  }
+  if (!process.env.CI_COMMIT_TAG && process.env.CI_COMMIT_REF_NAME) {
+    return process.env.CI_COMMIT_REF_NAME;
+  }
+  return "";
 }
 
 function normalizeRepositoryUrl(rawUrl: string): string {

@@ -34,7 +34,7 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
 
 export function isGitLabEnvironment(env: NodeJS.ProcessEnv): boolean {
   return Boolean(
-    env.GITLAB_CI || env.CI_PROJECT_DIR || env.CI_PIPELINE_ID
+    env.GITLAB_CI || (env.CI_PROJECT_DIR && env.CI_PIPELINE_ID)
   );
 }
 

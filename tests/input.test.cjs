@@ -5,7 +5,7 @@ const assert = require("node:assert");
 
 const { getValidatedInput } = require("../dist/input");
 
-const bitbucketEnvKeys = [
+const ciEnvKeys = [
   "REPOSITORY_URL",
   "BRANCH",
   "SCAN_PATH",
@@ -55,10 +55,19 @@ const bitbucketEnvKeys = [
   "BITBUCKET_SERVER_URL",
   "BITBUCKET_BASE_URL",
   "BITBUCKET_SERVER_SCM_PREFIX",
+  "GITLAB_CI",
+  "CI_PROJECT_DIR",
+  "CI_PIPELINE_ID",
+  "CI_REPOSITORY_URL",
+  "CI_PROJECT_URL",
+  "CI_COMMIT_BRANCH",
+  "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME",
+  "CI_COMMIT_REF_NAME",
+  "CI_COMMIT_TAG",
 ];
 
 function clearTestEnv() {
-  for (const key of bitbucketEnvKeys) {
+  for (const key of ciEnvKeys) {
     delete process.env[key];
   }
 }
@@ -353,6 +362,98 @@ test("getValidatedInput fails fast when API token is unresolved placeholder", ()
       assert.match(
         error.message,
         /unresolved variable placeholder/
+      );
+      return true;
+    }
+  );
+});
+
+// --- GitLab CI input tests ---
+
+test("getValidatedInput uses CI_REPOSITORY_URL for GitLab repo URL", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_REPOSITORY_URL = "https://gitlab-ci-token:glcbt-xxx@gitlab.com/org/repo.git";
+  process.env.CI_COMMIT_BRANCH = "main";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://gitlab.com/org/repo.git");
+  assert.strictEqual(input.branch, "main");
+});
+
+test("getValidatedInput strips CI job token from GitLab CI_REPOSITORY_URL", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_REPOSITORY_URL = "https://gitlab-ci-token:glcbt-64_sometoken@gitlab.com/org/repo.git";
+  process.env.CI_COMMIT_BRANCH = "main";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://gitlab.com/org/repo.git");
+  assert.ok(!input.repoUrl.includes("gitlab-ci-token"));
+  assert.ok(!input.repoUrl.includes("glcbt-"));
+});
+
+test("getValidatedInput falls back to CI_PROJECT_URL when CI_REPOSITORY_URL is absent", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
+  process.env.CI_COMMIT_BRANCH = "develop";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.repoUrl, "https://gitlab.com/org/repo");
+  assert.strictEqual(input.branch, "develop");
+});
+
+test("getValidatedInput uses CI_MERGE_REQUEST_SOURCE_BRANCH_NAME for MR context", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
+  process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME = "feature/mr-branch";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.branch, "feature/mr-branch");
+});
+
+test("getValidatedInput uses CI_COMMIT_REF_NAME when CI_COMMIT_BRANCH is absent and no tag", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
+  process.env.CI_COMMIT_REF_NAME = "feature/ref-only";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.branch, "feature/ref-only");
+});
+
+test("getValidatedInput skips CI_COMMIT_REF_NAME when CI_COMMIT_TAG is set (tag pipeline)", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
+  process.env.CI_COMMIT_TAG = "v1.0.0";
+  process.env.CI_COMMIT_REF_NAME = "v1.0.0";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.branch, "main");
+});
+
+test("getValidatedInput fails fast in GitLab environment without resolvable repo URL", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_COMMIT_BRANCH = "main";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  assert.throws(
+    () => {
+      getValidatedInput(createPlatform());
+    },
+    (error) => {
+      assert.match(
+        error.message,
+        /Repository URL is missing in CI environment/
       );
       return true;
     }
