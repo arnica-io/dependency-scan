@@ -1,0 +1,26 @@
+stages:
+  - scan
+
+dependency-scan:
+  stage: scan
+  image: node:24
+  script:
+    - cd "${CI_PROJECT_DIR}"
+    - npx --yes "@arnica-io/dependency-scan@1.0.30"
+  artifacts:
+    paths:
+      - arnica-scan-summary.md
+      - .arnica-scan-outputs.env
+    reports:
+      dotenv: .arnica-scan-outputs.env
+    when: always
+    expire_in: 7 days
+  # Add these as GitLab CI/CD variables (Settings → CI/CD → Variables):
+  # - ARNICA_API_TOKEN (masked & protected)
+  # - Optional ARNICA_API_BASE_URL (for staging/prod endpoint override)
+  # - Optional ARNICA_SCAN_PATH (subdirectory to scan; alias: SCAN_PATH)
+  #
+  # Example optional overrides (add to the variables: block):
+  # variables:
+  #   ARNICA_SCAN_PATH: "services/payments"
+  #   ARNICA_ON_FINDINGS: "alert"
