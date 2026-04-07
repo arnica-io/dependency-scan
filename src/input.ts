@@ -125,6 +125,9 @@ function getGitLabBranchFallback(): string {
   if (!process.env.CI_COMMIT_TAG && process.env.CI_COMMIT_REF_NAME) {
     return process.env.CI_COMMIT_REF_NAME;
   }
+  if (process.env.CI_DEFAULT_BRANCH) {
+    return process.env.CI_DEFAULT_BRANCH;
+  }
   return "";
 }
 

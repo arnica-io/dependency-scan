@@ -64,6 +64,7 @@ const ciEnvKeys = [
   "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME",
   "CI_COMMIT_REF_NAME",
   "CI_COMMIT_TAG",
+  "CI_DEFAULT_BRANCH",
 ];
 
 function clearTestEnv() {
@@ -429,7 +430,20 @@ test("getValidatedInput uses CI_COMMIT_REF_NAME when CI_COMMIT_BRANCH is absent 
   assert.strictEqual(input.branch, "feature/ref-only");
 });
 
-test("getValidatedInput skips CI_COMMIT_REF_NAME when CI_COMMIT_TAG is set (tag pipeline)", () => {
+test("getValidatedInput uses CI_DEFAULT_BRANCH for tag pipelines when set", () => {
+  process.env.GITLAB_CI = "true";
+  process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
+  process.env.CI_COMMIT_TAG = "v1.0.0";
+  process.env.CI_COMMIT_REF_NAME = "v1.0.0";
+  process.env.CI_DEFAULT_BRANCH = "develop";
+  process.env.ARNICA_API_TOKEN = "token";
+
+  const input = getValidatedInput(createPlatform());
+
+  assert.strictEqual(input.branch, "develop");
+});
+
+test("getValidatedInput falls back to 'main' for tag pipelines without CI_DEFAULT_BRANCH", () => {
   process.env.GITLAB_CI = "true";
   process.env.CI_PROJECT_URL = "https://gitlab.com/org/repo";
   process.env.CI_COMMIT_TAG = "v1.0.0";

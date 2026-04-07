@@ -32,6 +32,11 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
   );
 }
 
+/**
+ * GITLAB_CI is the canonical signal. The CI_PROJECT_DIR+CI_PIPELINE_ID
+ * pair covers rare custom runner setups that omit GITLAB_CI; both must be
+ * present to reduce false-positive risk from other CI systems.
+ */
 export function isGitLabEnvironment(env: NodeJS.ProcessEnv): boolean {
   return Boolean(
     env.GITLAB_CI || (env.CI_PROJECT_DIR && env.CI_PIPELINE_ID)

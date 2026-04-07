@@ -114,9 +114,16 @@ export class BitbucketPipelinesPlatform implements Platform {
     }
 
     const summaryPath = path.join(ws, "arnica-scan-summary.md");
-    await fsPromises.writeFile(summaryPath, this.summaryContent, "utf-8");
-    console.log(
-      `Arnica scan summary written to ${summaryPath}. Add this file to your pipeline artifacts if you want to retain it.`
-    );
+    try {
+      await fsPromises.writeFile(summaryPath, this.summaryContent, "utf-8");
+      console.log(
+        `Arnica scan summary written to ${summaryPath}. Add this file to your pipeline artifacts if you want to retain it.`
+      );
+    } catch (error: unknown) {
+      console.warn(
+        `writeSummary[bitbucket] failed to write summary to '${summaryPath}'`,
+        { error }
+      );
+    }
   }
 }

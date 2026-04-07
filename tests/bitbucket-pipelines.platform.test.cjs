@@ -125,25 +125,29 @@ test("setOutput logs fallback warning when file write fails", () => {
   assert.ok(!fs.existsSync(outFile));
 });
 
-test("writeSummary propagates write errors", async () => {
+test("writeSummary warns instead of crashing when file write fails", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "bb-arnica-"));
   process.env.BITBUCKET_CLONE_DIR = tmp;
   const platform = new BitbucketPipelinesPlatform();
   const originalWriteFile = fsPromises.writeFile;
+  const originalWarn = console.warn;
+  const warnings = [];
 
   fsPromises.writeFile = async () => {
     throw new Error("summary-write-failed");
   };
+  console.warn = (...args) => {
+    warnings.push(args);
+  };
 
   try {
-    await assert.rejects(
-      async () => {
-        await platform.writeSummary("line-1\n");
-      },
-      /summary-write-failed/
-    );
+    await platform.writeSummary("line-1\n");
   } finally {
     fsPromises.writeFile = originalWriteFile;
+    console.warn = originalWarn;
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+
+  assert.ok(warnings.length >= 1);
+  assert.match(String(warnings[0][0]), /failed to write summary/);
 });

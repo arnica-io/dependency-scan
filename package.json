@@ -1,7 +1,7 @@
 {
   "name": "@arnica-io/dependency-scan",
   "version": "1.0.0",
-  "description": "Arnica dependency security scan for GitHub Actions, Azure DevOps, and Bitbucket Pipelines",
+  "description": "Arnica dependency security scan for GitHub Actions, Azure DevOps, Bitbucket Pipelines, and GitLab CI",
   "main": "dist/cli.js",
   "bin": {
     "arnica-scan": "dist/cli.js"

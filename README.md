@@ -134,7 +134,7 @@ Auto-detection sources when `REPOSITORY_URL` / `BRANCH` are not provided:
 - **Azure DevOps**: `BUILD_REPOSITORY_URI`, `BUILD_SOURCEBRANCHNAME`
 - **Bitbucket Cloud/Server**: `BITBUCKET_GIT_HTTP_ORIGIN`, `BITBUCKET_GIT_SSH_ORIGIN`, `BITBUCKET_REPO_FULL_NAME`, `BITBUCKET_WORKSPACE`, `BITBUCKET_REPO_OWNER`, `BITBUCKET_REPO_SLUG`, `BITBUCKET_BRANCH`, `BITBUCKET_PR_SOURCE_BRANCH`, `BITBUCKET_SOURCE_BRANCH`, `BITBUCKET_BRANCH_NAME`
 - **Bitbucket Server (HTTPS clone URL synthesis):** `BITBUCKET_SERVER_URL` or `BITBUCKET_BASE_URL` with `BITBUCKET_REPO_FULL_NAME`; optional `BITBUCKET_SERVER_SCM_PREFIX` (default `scm`) when the Git HTTP path is not `/scm/...`
-- **GitLab CI**: `CI_REPOSITORY_URL` (credentials are stripped automatically), `CI_PROJECT_URL`, `CI_COMMIT_BRANCH`, `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`, `CI_COMMIT_REF_NAME` (skipped when `CI_COMMIT_TAG` is set to avoid reporting tags as branches)
+- **GitLab CI**: `CI_REPOSITORY_URL` (credentials are stripped automatically), `CI_PROJECT_URL`, `CI_COMMIT_BRANCH`, `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`, `CI_COMMIT_REF_NAME` (skipped when `CI_COMMIT_TAG` is set to avoid reporting tags as branches), `CI_DEFAULT_BRANCH` (used as fallback in tag pipelines)
 
 ### Permissions
 
@@ -478,6 +478,7 @@ Branch detection fallback order:
 1. `CI_COMMIT_BRANCH`
 2. `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`
 3. `CI_COMMIT_REF_NAME` (skipped when `CI_COMMIT_TAG` is set)
+4. `CI_DEFAULT_BRANCH` (the project's default branch; used automatically in tag pipelines)
 
 ### Example: scan a subdirectory, alert only
 
@@ -502,7 +503,7 @@ Add a `variables` block to the job:
   - Set `REPOSITORY_URL` explicitly in the job variables.
   - Verify your runner exports `CI_REPOSITORY_URL` or `CI_PROJECT_URL`.
 - **Branch shows tag name instead of branch**
-  - In tag pipelines, `CI_COMMIT_BRANCH` is unset and `CI_COMMIT_REF_NAME` contains the tag. The scanner detects `CI_COMMIT_TAG` and skips `CI_COMMIT_REF_NAME` in this case, falling back to `main`. Set `BRANCH` explicitly if you need a specific value.
+  - In tag pipelines, `CI_COMMIT_BRANCH` is unset and `CI_COMMIT_REF_NAME` contains the tag. The scanner detects `CI_COMMIT_TAG` and skips `CI_COMMIT_REF_NAME`, falling back to `CI_DEFAULT_BRANCH` (if set by the runner) then `main`. Set `BRANCH` explicitly if you need a specific value.
 - **No summary/output artifacts visible**
   - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts: paths`, and `.arnica-scan-outputs.env` is declared under `artifacts: reports: dotenv`.
 - **Workspace path warning (`CI_PROJECT_DIR` is unavailable)**
