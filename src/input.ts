@@ -3,6 +3,7 @@ import { Platform } from "./platform/platform";
 import {
   isBitbucketEnvironment,
   isGitHubEnvironment,
+  isGitLabEnvironment,
 } from "./platform/select-platform";
 
 const onFindings: readonly string[] = ["fail", "alert", "pass"];
@@ -105,6 +106,24 @@ function getBitbucketBranchFallback(): string {
   );
 }
 
+function getGitLabRepositoryUrlFallback(): string {
+  const ciRepoUrl = process.env.CI_REPOSITORY_URL;
+  if (ciRepoUrl) {
+    // Agentic Rule (ARNIE_SECRET_SECRET_MASKING): GitLab CI_REPOSITORY_URL may embed CI job tokens — strip via normalizeRepositoryUrl
+    return ciRepoUrl;
+  }
+  return process.env.CI_PROJECT_URL || "";
+}
+
+function getGitLabBranchFallback(): string {
+  return (
+    process.env.CI_COMMIT_BRANCH ||
+    process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ||
+    process.env.CI_COMMIT_REF_NAME ||
+    ""
+  );
+}
+
 function normalizeRepositoryUrl(rawUrl: string): string {
   if (!rawUrl) {
     return rawUrl;
@@ -167,6 +186,7 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
         getGitHubRepositoryUrlFallback() ||
         process.env.BUILD_REPOSITORY_URI ||
         getBitbucketRepositoryUrlFallback() ||
+        getGitLabRepositoryUrlFallback() ||
         ""
     ),
     branch:
@@ -176,6 +196,7 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
       getGitHubBranchFallback() ||
       process.env.BUILD_SOURCEBRANCHNAME ||
       getBitbucketBranchFallback() ||
+      getGitLabBranchFallback() ||
       "main",
     scanPath,
     repoScanPath: path.normalize(
@@ -243,8 +264,9 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   }
 
   const isKnownCiEnvironment =
-    isBitbucketEnvironment(process.env) ||
     isGitHubEnvironment(process.env) ||
+    isBitbucketEnvironment(process.env) ||
+    isGitLabEnvironment(process.env) ||
     isAzureEnvironment();
 
   if (isKnownCiEnvironment && !input.repoUrl) {

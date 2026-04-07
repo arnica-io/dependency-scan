@@ -1,6 +1,7 @@
 import { AzureDevOpsPlatform } from "./azure-devops";
 import { BitbucketPipelinesPlatform } from "./bitbucket-pipelines";
 import { GitHubActionsPlatform } from "./github";
+import { GitLabCIPlatform } from "./gitlab-ci";
 import { Platform } from "./platform";
 
 export function isGitHubEnvironment(env: NodeJS.ProcessEnv): boolean {
@@ -31,6 +32,12 @@ export function isBitbucketEnvironment(env: NodeJS.ProcessEnv): boolean {
   );
 }
 
+export function isGitLabEnvironment(env: NodeJS.ProcessEnv): boolean {
+  return Boolean(
+    env.GITLAB_CI || env.CI_PROJECT_DIR || env.CI_PIPELINE_ID
+  );
+}
+
 export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
   if (isGitHubEnvironment(env)) {
     return new GitHubActionsPlatform();
@@ -38,6 +45,10 @@ export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
 
   if (isBitbucketEnvironment(env)) {
     return new BitbucketPipelinesPlatform();
+  }
+
+  if (isGitLabEnvironment(env)) {
+    return new GitLabCIPlatform();
   }
 
   return new AzureDevOpsPlatform();
