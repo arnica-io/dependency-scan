@@ -6,7 +6,7 @@
 
 ## Arnica Dependency Scan – GitHub Action
 
-The same scanner is available as a **GitHub Action** (composite) and as an **npm CLI** for Azure DevOps and Bitbucket Pipelines (`npx @arnica-io/dependency-scan`).
+The same scanner is available as a **GitHub Action** (composite) and as an **npm CLI** for Azure DevOps, Bitbucket Pipelines, and GitLab CI (`npx @arnica-io/dependency-scan`).
 
 Extend Arnica’s security scanning into complex build environments that pull dependencies from multiple sources or compile packages from source.
 When real-time checks aren’t enough, post-build scanning validates SBOMs directly from your CI/CD pipelines via API, returning pass/fail results to enforce security gates before merges or deployments. Ensure consistent policy enforcement and centralized visibility in Arnica’s dashboard, even for environments with intricate dependency resolution.
@@ -18,6 +18,7 @@ Reference pipeline files with comments and secret/path notes:
 - GitHub Action: `examples/github-action.yml`
 - Azure DevOps: `examples/azure-devops.yml`
 - Bitbucket Pipelines: `examples/bitbucket-pipelines.yml`
+- GitLab CI: `examples/gitlab-ci.yml`
 
 ### Quickstart
 
@@ -133,6 +134,7 @@ Auto-detection sources when `REPOSITORY_URL` / `BRANCH` are not provided:
 - **Azure DevOps**: `BUILD_REPOSITORY_URI`, `BUILD_SOURCEBRANCHNAME`
 - **Bitbucket Cloud/Server**: `BITBUCKET_GIT_HTTP_ORIGIN`, `BITBUCKET_GIT_SSH_ORIGIN`, `BITBUCKET_REPO_FULL_NAME`, `BITBUCKET_WORKSPACE`, `BITBUCKET_REPO_OWNER`, `BITBUCKET_REPO_SLUG`, `BITBUCKET_BRANCH`, `BITBUCKET_PR_SOURCE_BRANCH`, `BITBUCKET_SOURCE_BRANCH`, `BITBUCKET_BRANCH_NAME`
 - **Bitbucket Server (HTTPS clone URL synthesis):** `BITBUCKET_SERVER_URL` or `BITBUCKET_BASE_URL` with `BITBUCKET_REPO_FULL_NAME`; optional `BITBUCKET_SERVER_SCM_PREFIX` (default `scm`) when the Git HTTP path is not `/scm/...`
+- **GitLab CI**: `CI_REPOSITORY_URL` (credentials are stripped automatically), `CI_PROJECT_URL`, `CI_COMMIT_BRANCH`, `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`, `CI_COMMIT_REF_NAME` (skipped when `CI_COMMIT_TAG` is set to avoid reporting tags as branches)
 
 ### Permissions
 
@@ -376,6 +378,135 @@ Add to the same `script` or export env before `npx`:
   - Set `BRANCH` explicitly if you need strict source-branch mapping.
 - **No summary/output artifacts visible**
   - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts`.
+
+---
+
+## GitLab CI
+
+Use the **published npm package** with `npx`, same as Azure DevOps and Bitbucket.
+
+- Auto-detects repository URL from `CI_REPOSITORY_URL` or `CI_PROJECT_URL` (embedded CI job tokens are stripped automatically).
+- Auto-detects branch from `CI_COMMIT_BRANCH`, `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`, or `CI_COMMIT_REF_NAME` (tag pipelines are handled — `CI_COMMIT_REF_NAME` is skipped when `CI_COMMIT_TAG` is set).
+
+You can always override detection with `REPOSITORY_URL` and `BRANCH`.
+
+### Prerequisites
+
+1. **ARNICA_API_TOKEN**: Store as a **masked** CI/CD variable (Settings → CI/CD → Variables).
+2. **Node.js 24+** on the job image (for example `node:24`).
+
+### Example pipeline
+
+```yaml
+stages:
+  - scan
+
+dependency-scan:
+  stage: scan
+  image: node:24
+  script:
+    - cd "${CI_PROJECT_DIR}"
+    - npx --yes "@arnica-io/dependency-scan@1.0.30"
+  artifacts:
+    paths:
+      - arnica-scan-summary.md
+      - .arnica-scan-outputs.env
+    reports:
+      dotenv: .arnica-scan-outputs.env
+    when: always
+    expire_in: 7 days
+```
+
+Pin the version in the `npx` argument (`@x.y.z`). This README is updated with current pins on each release.
+
+### Advanced: test scanner from source before npm publish
+
+If you want to validate unreleased changes, clone the scanner source in the pipeline, build it, and run it from source.
+
+```yaml
+stages:
+  - scan
+
+dependency-scan:
+  stage: scan
+  image: node:24
+  script:
+    - set -euo pipefail
+    - test -n "${ARNICA_API_TOKEN:-}" || (echo "ARNICA_API_TOKEN is required" && exit 1)
+    - git clone --depth 1 --branch "${ARNICA_SCAN_REF:-main}" "${ARNICA_SCAN_REPO_URL}" /tmp/dependency-scan-src
+    - cd /tmp/dependency-scan-src
+    - corepack enable
+    - corepack prepare pnpm@9.15.4 --activate
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+    - cd "${CI_PROJECT_DIR}"
+    - export PATH="/tmp/dependency-scan-src/node_modules/.bin:${PATH}"
+    - node /tmp/dependency-scan-src/dist/cli.js
+  artifacts:
+    paths:
+      - arnica-scan-summary.md
+      - .arnica-scan-outputs.env
+    reports:
+      dotenv: .arnica-scan-outputs.env
+    when: always
+    expire_in: 7 days
+```
+
+Required variables for this mode:
+
+- `ARNICA_API_TOKEN` (masked)
+- `ARNICA_SCAN_REPO_URL` (git URL to your private/public dependency-scan fork)
+- `ARNICA_SCAN_REF` (optional branch/tag/commit; defaults to `main`)
+
+### Outputs and summary
+
+GitLab CI does not expose GitHub-style step outputs or Azure `##vso` variables. This integration:
+
+- Logs lines `ARNICA_OUTPUT <name>=<value>` for visibility in the job log.
+- Appends `name=value` lines to **`.arnica-scan-outputs.env`** under the project directory. Declare it as a `dotenv` report artifact so downstream jobs can consume the variables.
+- Writes **`arnica-scan-summary.md`** in the project directory; list it under `artifacts: paths` to download from the pipeline UI.
+
+Environment variables are documented once in **CLI Environment Variables (All Platforms)** above.
+
+Repository URL detection fallback order:
+
+1. `CI_REPOSITORY_URL` (embedded credentials stripped)
+2. `CI_PROJECT_URL`
+
+Branch detection fallback order:
+
+1. `CI_COMMIT_BRANCH`
+2. `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`
+3. `CI_COMMIT_REF_NAME` (skipped when `CI_COMMIT_TAG` is set)
+
+### Example: scan a subdirectory, alert only
+
+Add a `variables` block to the job:
+
+```yaml
+  variables:
+    ARNICA_SCAN_PATH: "services/payments"
+    ARNICA_ON_FINDINGS: "alert"
+```
+
+### Where to View Reports (GitLab)
+
+1. **Job logs**: `ARNICA_OUTPUT` lines and scan progress
+2. **Artifacts**: `arnica-scan-summary.md` downloadable from the pipeline UI
+3. **Downstream variables**: `.arnica-scan-outputs.env` as a `dotenv` report artifact
+4. **Arnica Dashboard**: Full vulnerability management at `https://app.arnica.io`
+
+### Troubleshooting (GitLab)
+
+- **Repository URL is missing**
+  - Set `REPOSITORY_URL` explicitly in the job variables.
+  - Verify your runner exports `CI_REPOSITORY_URL` or `CI_PROJECT_URL`.
+- **Branch shows tag name instead of branch**
+  - In tag pipelines, `CI_COMMIT_BRANCH` is unset and `CI_COMMIT_REF_NAME` contains the tag. The scanner detects `CI_COMMIT_TAG` and skips `CI_COMMIT_REF_NAME` in this case, falling back to `main`. Set `BRANCH` explicitly if you need a specific value.
+- **No summary/output artifacts visible**
+  - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts: paths`, and `.arnica-scan-outputs.env` is declared under `artifacts: reports: dotenv`.
+- **Workspace path warning (`CI_PROJECT_DIR` is unavailable)**
+  - Ensure the job runs inside a proper GitLab CI runner. Custom Docker executors must export `CI_PROJECT_DIR`.
 
 ---
 
