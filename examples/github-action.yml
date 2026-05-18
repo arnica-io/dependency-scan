@@ -20,7 +20,7 @@ jobs:
 
       - name: Run Arnica dependency scan
         id: arnica
-        uses: arnica-io/dependency-scan@35465acb89aaaad9de1bd6be79cb8f011267978a # v1.0.30
+        uses: arnica-io/dependency-scan@6b1377a3d111170de80632696039f658f59940e1 # v1.0.31
         env:
           # Required secret: create this in GitHub repository secrets.
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
