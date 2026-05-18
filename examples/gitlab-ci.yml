@@ -18,7 +18,7 @@ dependency-scan:
   # Add these as GitLab CI/CD variables (Settings → CI/CD → Variables):
   # - ARNICA_API_TOKEN (masked & protected)
   # - Optional ARNICA_API_BASE_URL (for staging/prod endpoint override)
-  # - Optional ARNICA_SCAN_PATH (subdirectory to scan; alias: SCAN_PATH)
+  # - Optional ARNICA_SCAN_PATH (subdirectory to scan)
   #
   # Example optional overrides (add to the variables: block):
   # variables:

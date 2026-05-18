@@ -1,8 +1,8 @@
-import { spawn } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import { Platform } from "./platform";
+import { runCommand } from "./run-command";
 
 export class AzureDevOpsPlatform implements Platform {
   private summaryContent = "";
@@ -32,25 +32,7 @@ export class AzureDevOpsPlatform implements Platform {
     args: string[],
     options?: { cwd?: string }
   ): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn(command, args, {
-        cwd: options?.cwd,
-        stdio: "inherit",
-        shell: false,
-      });
-      child.on("error", reject);
-      child.on("close", (code, signal) => {
-        if (code === 0) {
-          resolve();
-          return;
-        }
-        reject(
-          new Error(
-            `Command exited with code ${code ?? "null"}, signal ${signal ?? "null"}`
-          )
-        );
-      });
-    });
+    await runCommand(command, args, options);
   }
 
   getWorkspacePath(): string {

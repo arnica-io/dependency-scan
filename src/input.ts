@@ -1,6 +1,7 @@
 import * as path from "path";
 import { Platform } from "./platform/platform";
 import {
+  isAzureEnvironment,
   isBitbucketEnvironment,
   isGitHubEnvironment,
   isGitLabEnvironment,
@@ -26,15 +27,6 @@ function normalizeBitbucketCloudUrl(rawUrl: string): string {
   }
 
   return rawUrl;
-}
-
-function isAzureEnvironment(): boolean {
-  return Boolean(
-    process.env.TF_BUILD ||
-      process.env.BUILD_BUILDID ||
-      process.env.BUILD_REPOSITORY_URI ||
-      process.env.BUILD_SOURCEBRANCHNAME
-  );
 }
 
 function getGitHubRepositoryUrlFallback(): string {
@@ -171,15 +163,18 @@ export interface DependencyScanInput {
 export function getValidatedInput(platform: Platform): DependencyScanInput {
   const workspacePath = platform.getWorkspacePath();
 
+  // Configuration precedence (two-tier by design):
+  //   1. INPUT_* — populated by action.yml when the GitHub composite action
+  //      is invoked with `with:` parameters. Takes precedence so workflow
+  //      `with:` values override any inherited environment.
+  //   2. ARNICA_* — the canonical env-var name used for direct CLI usage
+  //      on Azure DevOps, Bitbucket Pipelines, GitLab CI, or as an
+  //      environment override on GitHub Actions.
   const scanPath =
-    process.env.INPUT_SCAN_PATH ||
-    process.env.SCAN_PATH ||
-    process.env.ARNICA_SCAN_PATH ||
-    ".";
+    process.env.INPUT_SCAN_PATH || process.env.ARNICA_SCAN_PATH || ".";
 
   const scanTimeoutSeconds = parseInt(
     process.env.INPUT_SCAN_TIMEOUT_SECONDS ||
-      process.env.SCAN_TIMEOUT_SECONDS ||
       process.env.ARNICA_SCAN_TIMEOUT_SECONDS ||
       "900",
     10
@@ -188,7 +183,6 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
   const input: DependencyScanInput = {
     repoUrl: normalizeRepositoryUrl(
       process.env.INPUT_REPOSITORY_URL ||
-        process.env.REPOSITORY_URL ||
         process.env.ARNICA_REPOSITORY_URL ||
         getGitHubRepositoryUrlFallback() ||
         process.env.BUILD_REPOSITORY_URI ||
@@ -198,7 +192,6 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     ),
     branch:
       process.env.INPUT_BRANCH ||
-      process.env.BRANCH ||
       process.env.ARNICA_BRANCH ||
       getGitHubBranchFallback() ||
       process.env.BUILD_SOURCEBRANCHNAME ||
@@ -211,23 +204,17 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     ),
     apiBaseUrl:
       process.env.INPUT_API_BASE_URL ||
-      process.env.API_BASE_URL ||
       process.env.ARNICA_API_BASE_URL ||
       "https://api.app.arnica.io",
     scanTimeoutSeconds,
     apiToken:
-      process.env.INPUT_API_TOKEN ||
-      process.env.API_TOKEN ||
-      process.env.ARNICA_API_TOKEN ||
-      "",
+      process.env.INPUT_API_TOKEN || process.env.ARNICA_API_TOKEN || "",
     onFindings:
       process.env.INPUT_ON_FINDINGS ||
-      process.env.ON_FINDINGS ||
       process.env.ARNICA_ON_FINDINGS ||
       "fail",
     debug:
       process.env.INPUT_DEBUG === "true" ||
-      process.env.ARNICA_DEBUG_MODE === "true" ||
       process.env.ARNICA_DEBUG === "true",
   };
 
@@ -274,11 +261,11 @@ export function getValidatedInput(platform: Platform): DependencyScanInput {
     isGitHubEnvironment(process.env) ||
     isBitbucketEnvironment(process.env) ||
     isGitLabEnvironment(process.env) ||
-    isAzureEnvironment();
+    isAzureEnvironment(process.env);
 
   if (isKnownCiEnvironment && !input.repoUrl) {
     const msg =
-      "Repository URL is missing in CI environment. Set REPOSITORY_URL explicitly.";
+      "Repository URL is missing in CI environment. Set ARNICA_REPOSITORY_URL explicitly.";
     platform.setFailed(msg);
     throw new Error(msg);
   }

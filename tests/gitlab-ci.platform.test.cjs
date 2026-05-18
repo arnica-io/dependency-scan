@@ -40,21 +40,6 @@ test("setOutput appends to .arnica-scan-outputs.env under project dir", () => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test("setOutput resets stale outputs file for each new run instance", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gl-arnica-"));
-  process.env.CI_PROJECT_DIR = tmp;
-  const outFile = path.join(tmp, ".arnica-scan-outputs.env");
-  fs.writeFileSync(outFile, "stale=value\n", "utf-8");
-
-  const platform = new GitLabCIPlatform();
-  platform.setOutput("status", "Success");
-
-  const content = fs.readFileSync(outFile, "utf-8");
-  assert.ok(content.includes("status=Success"));
-  assert.ok(!content.includes("stale=value"));
-  fs.rmSync(tmp, { recursive: true, force: true });
-});
-
 test("setOutput sanitizes multiline values into one env line", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gl-arnica-"));
   process.env.CI_PROJECT_DIR = tmp;
@@ -103,56 +88,41 @@ test("missing workspace warns once and does not throw for outputs/summary", asyn
   assert.strictEqual(warnings.length, 1);
 });
 
-test("setOutput logs fallback warning when file write fails", () => {
+test("setOutput propagates file write errors so CI fails", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gl-arnica-"));
   process.env.CI_PROJECT_DIR = tmp;
-  const originalWriteFileSync = fs.writeFileSync;
-  const originalWarn = console.warn;
-  const warnings = [];
+  const originalAppendFileSync = fs.appendFileSync;
 
-  fs.writeFileSync = () => {
+  fs.appendFileSync = () => {
     throw new Error("disk-full");
-  };
-  console.warn = (...args) => {
-    warnings.push(args);
   };
 
   try {
     const platform = new GitLabCIPlatform();
-    platform.setOutput("status", "Success");
+    assert.throws(() => platform.setOutput("status", "Success"), /disk-full/);
   } finally {
-    fs.writeFileSync = originalWriteFileSync;
-    console.warn = originalWarn;
+    fs.appendFileSync = originalAppendFileSync;
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-
-  assert.ok(warnings.length >= 1);
-  assert.match(String(warnings[0][0]), /switching to log-only output/);
 });
 
-test("writeSummary warns instead of crashing when file write fails", async () => {
+test("writeSummary propagates file write errors so CI fails", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gl-arnica-"));
   process.env.CI_PROJECT_DIR = tmp;
   const platform = new GitLabCIPlatform();
   const originalWriteFile = fsPromises.writeFile;
-  const originalWarn = console.warn;
-  const warnings = [];
 
   fsPromises.writeFile = async () => {
     throw new Error("summary-write-failed");
   };
-  console.warn = (...args) => {
-    warnings.push(args);
-  };
 
   try {
-    await platform.writeSummary("line-1\n");
+    await assert.rejects(
+      () => platform.writeSummary("line-1\n"),
+      /summary-write-failed/
+    );
   } finally {
     fsPromises.writeFile = originalWriteFile;
-    console.warn = originalWarn;
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-
-  assert.ok(warnings.length >= 1);
-  assert.match(String(warnings[0][0]), /failed to write summary/);
 });

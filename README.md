@@ -114,21 +114,20 @@ Security scan results appear in multiple locations:
 
 Use these env vars when running the scanner via `npx @arnica-io/dependency-scan` (Azure DevOps, Bitbucket Pipelines, and similar CI).
 
-| Name                     | Required | Default                     | Description                                                                 |
-| ------------------------ | :------: | --------------------------- | --------------------------------------------------------------------------- |
-| `ARNICA_API_TOKEN`       |   Yes    |                             | Arnica API token                                                            |
-| `ARNICA_API_BASE_URL`    |    No    | `https://api.app.arnica.io` | Arnica API base URL                                                         |
-| `REPOSITORY_URL`         |    No    | auto-detected               | Repository URL override                                                     |
-| `BRANCH`                 |    No    | auto-detected               | Branch override                                                             |
-| `ARNICA_SCAN_PATH`       |    No    | `.`                         | Directory path to scan (`SCAN_PATH` also accepted)                          |
-| `ARNICA_SCAN_TIMEOUT_SECONDS` | No  | `900`                       | Scan wait timeout in seconds (`SCAN_TIMEOUT_SECONDS` also accepted)         |
-| `ARNICA_ON_FINDINGS`     |    No    | `fail`                      | `fail`, `alert`, or `pass` (`ON_FINDINGS` also accepted)                    |
-| `ARNICA_DEBUG_MODE`      |    No    | `false`                     | Verbose API debug logs                                                      |
-| `ARNICA_DEBUG`           |    No    | `false`                     | Same as `ARNICA_DEBUG_MODE` when set to `true`                              |
+| Name                          | Required | Default                     | Description                              |
+| ----------------------------- | :------: | --------------------------- | ---------------------------------------- |
+| `ARNICA_API_TOKEN`            |   Yes    |                             | Arnica API token                         |
+| `ARNICA_API_BASE_URL`         |    No    | `https://api.app.arnica.io` | Arnica API base URL                      |
+| `ARNICA_REPOSITORY_URL`       |    No    | auto-detected               | Repository URL override                  |
+| `ARNICA_BRANCH`               |    No    | auto-detected               | Branch override                          |
+| `ARNICA_SCAN_PATH`            |    No    | `.`                         | Directory path to scan                   |
+| `ARNICA_SCAN_TIMEOUT_SECONDS` |    No    | `900`                       | Scan wait timeout in seconds             |
+| `ARNICA_ON_FINDINGS`          |    No    | `fail`                      | `fail`, `alert`, or `pass`               |
+| `ARNICA_DEBUG`                |    No    | `false`                     | Verbose API debug logs when set to `true`|
 
 Generic `DEBUG` is intentionally ignored so unrelated tools that set `DEBUG=true` do not enable Arnica verbose logging.
 
-Auto-detection sources when `REPOSITORY_URL` / `BRANCH` are not provided:
+Auto-detection sources when `ARNICA_REPOSITORY_URL` / `ARNICA_BRANCH` are not provided:
 
 - **GitHub**: `GITHUB_SERVER_URL`, `GITHUB_REPOSITORY`, `GITHUB_HEAD_REF` / `GITHUB_REF_NAME`
 - **Azure DevOps**: `BUILD_REPOSITORY_URI`, `BUILD_SOURCEBRANCHNAME`
@@ -237,7 +236,7 @@ Force npmjs for this step:
 
 ### Advanced: build from a git checkout (lockfile-pinned)
 
-If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same CLI env vars (`ARNICA_API_TOKEN`, `REPOSITORY_URL`, `BRANCH`, `ARNICA_SCAN_PATH`, `ARNICA_ON_FINDINGS`, etc.) from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
+If you want transitives fixed to this repo’s `pnpm-lock.yaml`, add a **GitHub service connection**, check out `arnica-io/dependency-scan` at a release tag, then `corepack prepare pnpm@9.15.4 --activate`, `pnpm install --frozen-lockfile`, `pnpm run build`, and run `node dist/cli.js` with `PATH` including that checkout’s `node_modules/.bin`. Use the same CLI env vars (`ARNICA_API_TOKEN`, `ARNICA_REPOSITORY_URL`, `ARNICA_BRANCH`, `ARNICA_SCAN_PATH`, `ARNICA_ON_FINDINGS`, etc.) from `$(Build.SourcesDirectory)` for the project you are scanning (`checkout: self`).
 
 Environment variables are documented once in **CLI Environment Variables (All Platforms)** above.
 
@@ -265,7 +264,7 @@ Use the **published npm package** with `npx`, same as Azure DevOps.
 - **Bitbucket Cloud**: auto-detects from `BITBUCKET_GIT_HTTP_ORIGIN` and `BITBUCKET_BRANCH`.
 - **Bitbucket Server/Data Center runners**: also supports `BITBUCKET_GIT_SSH_ORIGIN` and derives a repository URL from `BITBUCKET_SERVER_URL` + `BITBUCKET_REPO_FULL_NAME` when needed.
 
-You can always override detection with `REPOSITORY_URL` and `BRANCH`.
+You can always override detection with `ARNICA_REPOSITORY_URL` and `ARNICA_BRANCH`.
 
 **Bitbucket Server URL shape:** Auto-derived URLs use `{BITBUCKET_SERVER_URL}/{BITBUCKET_SERVER_SCM_PREFIX}/{BITBUCKET_REPO_FULL_NAME}.git` with prefix defaulting to `scm` (common for Atlassian Bitbucket Server). Some installations use a different path segment (for example `git`); set `BITBUCKET_SERVER_SCM_PREFIX` to match yours. Project-key layouts, HTTP(S) proxies, or non-standard Git HTTP paths may still require setting `REPOSITORY_URL` explicitly.
 
@@ -371,11 +370,11 @@ Add to the same `script` or export env before `npx`:
 ### Troubleshooting (Bitbucket)
 
 - **Repository URL is missing**
-  - Set `REPOSITORY_URL` explicitly in the step environment.
+  - Set `ARNICA_REPOSITORY_URL` explicitly in the step environment.
   - Verify your runner exports one of: `BITBUCKET_GIT_HTTP_ORIGIN`, `BITBUCKET_GIT_SSH_ORIGIN`, or (`BITBUCKET_SERVER_URL` + `BITBUCKET_REPO_FULL_NAME`).
 - **Unexpected branch value in PR pipelines**
   - PR pipelines may expose multiple branch variables depending on runner type.
-  - Set `BRANCH` explicitly if you need strict source-branch mapping.
+  - Set `ARNICA_BRANCH` explicitly if you need strict source-branch mapping.
 - **No summary/output artifacts visible**
   - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts`.
 
@@ -388,7 +387,7 @@ Use the **published npm package** with `npx`, same as Azure DevOps and Bitbucket
 - Auto-detects repository URL from `CI_REPOSITORY_URL` or `CI_PROJECT_URL` (embedded CI job tokens are stripped automatically).
 - Auto-detects branch from `CI_COMMIT_BRANCH`, `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME`, or `CI_COMMIT_REF_NAME` (tag pipelines are handled — `CI_COMMIT_REF_NAME` is skipped when `CI_COMMIT_TAG` is set).
 
-You can always override detection with `REPOSITORY_URL` and `BRANCH`.
+You can always override detection with `ARNICA_REPOSITORY_URL` and `ARNICA_BRANCH`.
 
 ### Prerequisites
 
@@ -500,10 +499,10 @@ Add a `variables` block to the job:
 ### Troubleshooting (GitLab)
 
 - **Repository URL is missing**
-  - Set `REPOSITORY_URL` explicitly in the job variables.
+  - Set `ARNICA_REPOSITORY_URL` explicitly in the job variables.
   - Verify your runner exports `CI_REPOSITORY_URL` or `CI_PROJECT_URL`.
 - **Branch shows tag name instead of branch**
-  - In tag pipelines, `CI_COMMIT_BRANCH` is unset and `CI_COMMIT_REF_NAME` contains the tag. The scanner detects `CI_COMMIT_TAG` and skips `CI_COMMIT_REF_NAME`, falling back to `CI_DEFAULT_BRANCH` (if set by the runner) then `main`. Set `BRANCH` explicitly if you need a specific value.
+  - In tag pipelines, `CI_COMMIT_BRANCH` is unset and `CI_COMMIT_REF_NAME` contains the tag. The scanner detects `CI_COMMIT_TAG` and skips `CI_COMMIT_REF_NAME`, falling back to `CI_DEFAULT_BRANCH` (if set by the runner) then `main`. Set `ARNICA_BRANCH` explicitly if you need a specific value.
 - **No summary/output artifacts visible**
   - Make sure `arnica-scan-summary.md` and `.arnica-scan-outputs.env` are listed under `artifacts: paths`, and `.arnica-scan-outputs.env` is declared under `artifacts: reports: dotenv`.
 - **Workspace path warning (`CI_PROJECT_DIR` is unavailable)**

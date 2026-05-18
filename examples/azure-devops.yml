@@ -27,9 +27,9 @@ steps:
     env:
       # Required: map the variable-group secret into the CLI env name.
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
-      # Optional: scan a subdirectory only (alias: SCAN_PATH).
+      # Optional: scan a subdirectory only.
       ARNICA_SCAN_PATH: services/payments
-      # Optional: fail (default), alert, or pass (alias: ON_FINDINGS).
+      # Optional: fail (default), alert, or pass.
       ARNICA_ON_FINDINGS: fail
       # Optional: staging/prod API endpoint.
       # ARNICA_API_BASE_URL: https://api.app.arnica.io

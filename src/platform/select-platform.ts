@@ -43,6 +43,15 @@ export function isGitLabEnvironment(env: NodeJS.ProcessEnv): boolean {
   );
 }
 
+export function isAzureEnvironment(env: NodeJS.ProcessEnv): boolean {
+  return Boolean(
+    env.TF_BUILD ||
+      env.BUILD_BUILDID ||
+      env.BUILD_REPOSITORY_URI ||
+      env.BUILD_SOURCEBRANCHNAME
+  );
+}
+
 export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
   if (isGitHubEnvironment(env)) {
     return new GitHubActionsPlatform();
@@ -56,5 +65,11 @@ export function selectPlatform(env: NodeJS.ProcessEnv): Platform {
     return new GitLabCIPlatform();
   }
 
-  return new AzureDevOpsPlatform();
+  if (isAzureEnvironment(env)) {
+    return new AzureDevOpsPlatform();
+  }
+
+  throw new Error(
+    "No supported CI platform detected. Set environment variables for GitHub Actions, Bitbucket Pipelines, GitLab CI, or Azure DevOps before invoking the scanner."
+  );
 }

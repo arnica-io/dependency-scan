@@ -22,7 +22,7 @@ Thanks for your interest in contributing! This repository hosts a GitHub Action 
 ### Verification expectations
 
 - **Required for every PR:** `pnpm run build` and `pnpm run test` (mirrors CI). Platform detection, env parsing, and URL fallbacks are covered by unit tests under `tests/`.
-- **Optional smoke tests:** Running the scanner end-to-end in GitHub Actions, Azure DevOps, or Bitbucket Pipelines is encouraged for large CI-facing changes or before a release, but it is not a merge gate when automated tests already cover the logic.
+- **Optional smoke tests:** Running the scanner end-to-end in GitHub Actions, Azure DevOps, or Bitbucket Pipelines is encouraged for large CI-facing changes or before a release, but it is not a merge gate.
 
 ### Security
 

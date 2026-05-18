@@ -6,15 +6,7 @@ const assert = require("node:assert");
 const { getValidatedInput } = require("../dist/input");
 
 const ciEnvKeys = [
-  "REPOSITORY_URL",
-  "BRANCH",
-  "SCAN_PATH",
-  "API_BASE_URL",
-  "API_TOKEN",
-  "SCAN_TIMEOUT_SECONDS",
-  "ON_FINDINGS",
   "DEBUG",
-  "ARNICA_DEBUG_MODE",
   "GITHUB_ACTIONS",
   "GITHUB_REPOSITORY",
   "GITHUB_SERVER_URL",
@@ -34,6 +26,7 @@ const ciEnvKeys = [
   "ARNICA_REPOSITORY_URL",
   "ARNICA_BRANCH",
   "ARNICA_SCAN_PATH",
+  "ARNICA_API_BASE_URL",
   "ARNICA_SCAN_TIMEOUT_SECONDS",
   "ARNICA_ON_FINDINGS",
   "ARNICA_DEBUG",
@@ -198,19 +191,19 @@ test("getValidatedInput derives GitHub repository URL and branch from env", () =
   assert.strictEqual(input.branch, "feature/gh-branch");
 });
 
-test("getValidatedInput supports generic CLI env names", () => {
-  process.env.REPOSITORY_URL = "https://bitbucket.org/acme/alias-repo";
-  process.env.BRANCH = "feature/alias-branch";
-  process.env.SCAN_PATH = "services/payments";
-  process.env.SCAN_TIMEOUT_SECONDS = "1200";
-  process.env.ON_FINDINGS = "alert";
-  process.env.ARNICA_DEBUG_MODE = "true";
-  process.env.API_TOKEN = "token";
+test("getValidatedInput supports ARNICA_* canonical env names", () => {
+  process.env.ARNICA_REPOSITORY_URL = "https://bitbucket.org/acme/canonical-repo";
+  process.env.ARNICA_BRANCH = "feature/canonical-branch";
+  process.env.ARNICA_SCAN_PATH = "services/payments";
+  process.env.ARNICA_SCAN_TIMEOUT_SECONDS = "1200";
+  process.env.ARNICA_ON_FINDINGS = "alert";
+  process.env.ARNICA_DEBUG = "true";
+  process.env.ARNICA_API_TOKEN = "token";
 
   const input = getValidatedInput(createPlatform());
 
-  assert.strictEqual(input.repoUrl, "https://bitbucket.org/acme/alias-repo");
-  assert.strictEqual(input.branch, "feature/alias-branch");
+  assert.strictEqual(input.repoUrl, "https://bitbucket.org/acme/canonical-repo");
+  assert.strictEqual(input.branch, "feature/canonical-branch");
   assert.strictEqual(input.scanPath, "services/payments");
   assert.strictEqual(input.scanTimeoutSeconds, 1200);
   assert.strictEqual(input.onFindings, "alert");
@@ -218,46 +211,45 @@ test("getValidatedInput supports generic CLI env names", () => {
 });
 
 test("getValidatedInput does not enable debug from generic DEBUG env alone", () => {
-  process.env.REPOSITORY_URL = "https://bitbucket.org/acme/alias-repo";
+  process.env.ARNICA_REPOSITORY_URL = "https://bitbucket.org/acme/alias-repo";
   process.env.DEBUG = "true";
-  process.env.API_TOKEN = "token";
+  process.env.ARNICA_API_TOKEN = "token";
 
   const input = getValidatedInput(createPlatform());
 
   assert.strictEqual(input.debug, false);
 });
 
-test("getValidatedInput keeps legacy INPUT_* compatibility", () => {
+test("getValidatedInput keeps INPUT_* compatibility for GitHub Actions composite", () => {
   process.env.INPUT_REPOSITORY_URL = "https://github.com/arnica-io/dependency-scan";
-  process.env.INPUT_BRANCH = "legacy-input-branch";
-  process.env.INPUT_SCAN_PATH = "legacy/path";
+  process.env.INPUT_BRANCH = "input-branch";
+  process.env.INPUT_SCAN_PATH = "input/path";
   process.env.INPUT_SCAN_TIMEOUT_SECONDS = "777";
   process.env.INPUT_ON_FINDINGS = "pass";
   process.env.INPUT_DEBUG = "true";
-  process.env.INPUT_API_TOKEN = "legacy-token";
+  process.env.INPUT_API_TOKEN = "input-token";
   process.env.INPUT_API_BASE_URL = "https://api.app.arnica.io";
 
   const input = getValidatedInput(createPlatform());
 
   assert.strictEqual(input.repoUrl, "https://github.com/arnica-io/dependency-scan");
-  assert.strictEqual(input.branch, "legacy-input-branch");
-  assert.strictEqual(input.scanPath, "legacy/path");
+  assert.strictEqual(input.branch, "input-branch");
+  assert.strictEqual(input.scanPath, "input/path");
   assert.strictEqual(input.scanTimeoutSeconds, 777);
   assert.strictEqual(input.onFindings, "pass");
   assert.strictEqual(input.debug, true);
-  assert.strictEqual(input.apiToken, "legacy-token");
+  assert.strictEqual(input.apiToken, "input-token");
   assert.strictEqual(input.apiBaseUrl, "https://api.app.arnica.io");
 });
 
-test("getValidatedInput gives INPUT_* precedence over generic names", () => {
-  process.env.REPOSITORY_URL = "https://bitbucket.org/acme/generic-repo";
-  process.env.BRANCH = "generic-branch";
-  process.env.SCAN_PATH = "generic/path";
-  process.env.SCAN_TIMEOUT_SECONDS = "111";
-  process.env.ON_FINDINGS = "alert";
-  process.env.DEBUG = "false";
-  process.env.API_TOKEN = "generic-token";
-  process.env.API_BASE_URL = "https://api.staging.notaloevera.io";
+test("getValidatedInput gives INPUT_* precedence over ARNICA_* canonical names", () => {
+  process.env.ARNICA_REPOSITORY_URL = "https://bitbucket.org/acme/canonical-repo";
+  process.env.ARNICA_BRANCH = "canonical-branch";
+  process.env.ARNICA_SCAN_PATH = "canonical/path";
+  process.env.ARNICA_SCAN_TIMEOUT_SECONDS = "111";
+  process.env.ARNICA_ON_FINDINGS = "alert";
+  process.env.ARNICA_API_TOKEN = "canonical-token";
+  process.env.ARNICA_API_BASE_URL = "https://api.staging.notaloevera.io";
 
   process.env.INPUT_REPOSITORY_URL = "https://github.com/arnica-io/input-repo";
   process.env.INPUT_BRANCH = "input-branch";

@@ -5,6 +5,7 @@ const assert = require("node:assert");
 
 const {
   selectPlatform,
+  isAzureEnvironment,
   isBitbucketEnvironment,
   isGitHubEnvironment,
   isGitLabEnvironment,
@@ -38,9 +39,35 @@ test("selectPlatform picks Bitbucket with repo full name only", () => {
   assert.ok(platform instanceof BitbucketPipelinesPlatform);
 });
 
-test("selectPlatform falls back to Azure when no GitHub/Bitbucket markers", () => {
-  const platform = selectPlatform({});
+test("selectPlatform picks Azure when ADO env markers are present", () => {
+  const platform = selectPlatform({ TF_BUILD: "True" });
   assert.ok(platform instanceof AzureDevOpsPlatform);
+});
+
+test("selectPlatform picks Azure when BUILD_REPOSITORY_URI is set", () => {
+  const platform = selectPlatform({
+    BUILD_REPOSITORY_URI: "https://dev.azure.com/org/_git/repo",
+  });
+  assert.ok(platform instanceof AzureDevOpsPlatform);
+});
+
+test("selectPlatform throws when no supported CI platform markers are present", () => {
+  assert.throws(
+    () => selectPlatform({}),
+    /No supported CI platform detected/
+  );
+});
+
+test("isAzureEnvironment returns true for TF_BUILD", () => {
+  assert.strictEqual(isAzureEnvironment({ TF_BUILD: "True" }), true);
+});
+
+test("isAzureEnvironment returns true for BUILD_BUILDID", () => {
+  assert.strictEqual(isAzureEnvironment({ BUILD_BUILDID: "123" }), true);
+});
+
+test("isAzureEnvironment returns false for empty env", () => {
+  assert.strictEqual(isAzureEnvironment({}), false);
 });
 
 test("selectPlatform picks Bitbucket with workspace and slug only", () => {
