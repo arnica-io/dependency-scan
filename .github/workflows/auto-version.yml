@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - "README.md"
+      - "examples/**"
 
 concurrency:
   group: auto-version
@@ -91,18 +92,20 @@ jobs:
 
           RELEASE_SHA=$(git rev-list -n 1 "${TAG_NAME}")
 
-          # Update GitHub Action SHA pins in README (`uses:` entries only)
-          sed -i -E "s|^([[:space:]]*uses:[[:space:]]+arnica-io/dependency-scan@)[^[:space:]]+([[:space:]]*#[^\n]*)?$|\1${RELEASE_SHA} # ${TAG_NAME}|g" README.md
+          FILES_TO_UPDATE=(README.md examples/*.yml)
 
-          # Update npm version pins in README (`npx` entries only)
-          sed -i -E "s|(^[[:space:]]*npx[[:space:]]+--yes[[:space:]]+\"@arnica-io/dependency-scan@)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${NEW_VERSION}\2|g" README.md
+          # Update GitHub Action SHA pins (`uses:` entries only)
+          sed -i -E "s|^([[:space:]]*uses:[[:space:]]+arnica-io/dependency-scan@)[^[:space:]]+([[:space:]]*#[^\n]*)?$|\1${RELEASE_SHA} # ${TAG_NAME}|g" "${FILES_TO_UPDATE[@]}"
 
-          if git diff --quiet -- README.md; then
+          # Update npm version pins (`npx` entries only)
+          sed -i -E "s|(^[[:space:]]*npx[[:space:]]+--yes[[:space:]]+\"@arnica-io/dependency-scan@)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${NEW_VERSION}\2|g" "${FILES_TO_UPDATE[@]}"
+
+          if git diff --quiet -- "${FILES_TO_UPDATE[@]}"; then
             echo "Files already up to date for ${TAG_NAME}."
             exit 0
           fi
 
-          git add README.md
+          git add "${FILES_TO_UPDATE[@]}"
           git commit -m "docs: update version references to ${TAG_NAME} [skip ci]"
           git push origin main
 
