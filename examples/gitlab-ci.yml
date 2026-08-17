@@ -6,7 +6,7 @@ dependency-scan:
   image: node:24
   script:
     - cd "${CI_PROJECT_DIR}"
-    - npx --yes "@arnica-io/dependency-scan@1.0.32"
+    - npx --yes "@arnica-io/dependency-scan@1.0.33"
   artifacts:
     paths:
       - arnica-scan-summary.md

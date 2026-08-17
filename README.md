@@ -46,7 +46,7 @@ jobs:
 
       - name: Dependency Security Scan with Arnica
         id: arnica
-        uses: arnica-io/dependency-scan@3e9d7e98c55b73536f9d670be46bd683b778c136 # v1.0.32
+        uses: arnica-io/dependency-scan@ab5da123065b211ff1d3b941748edb819153ea08 # v1.0.33
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
@@ -66,7 +66,7 @@ While Arnica's action tags are immutable, as a general best practice we recommen
 
 ```yaml
 # Best practice – pinned to commit SHA
-uses: arnica-io/dependency-scan@3e9d7e98c55b73536f9d670be46bd683b778c136 # v1.0.32
+uses: arnica-io/dependency-scan@ab5da123065b211ff1d3b941748edb819153ea08 # v1.0.33
 ```
 
 The SHA for each release is listed on the [Releases](../../releases) page. This README is automatically updated with the latest SHA on every release.
@@ -152,7 +152,7 @@ Scan a subdirectory and alert (do not fail) on policy violations:
 ```yaml
 - name: Generate SBOM and scan with Arnica
   id: arnica
-  uses: arnica-io/dependency-scan@3e9d7e98c55b73536f9d670be46bd683b778c136 # v1.0.32
+  uses: arnica-io/dependency-scan@ab5da123065b211ff1d3b941748edb819153ea08 # v1.0.33
   env:
     ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
   with:
@@ -211,7 +211,7 @@ steps:
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)"
-      npx --yes "@arnica-io/dependency-scan@1.0.32"
+      npx --yes "@arnica-io/dependency-scan@1.0.33"
     displayName: Arnica dependency scan
     env:
       ARNICA_API_TOKEN: $(ARNICA_API_TOKEN)
@@ -231,7 +231,7 @@ Force npmjs for this step:
       cd "$(Build.SourcesDirectory)"
       npm config set registry "https://registry.npmjs.org/"
       npm config delete @arnica-io:registry || true
-      npx --registry "https://registry.npmjs.org/" --yes "@arnica-io/dependency-scan@1.0.32"
+      npx --registry "https://registry.npmjs.org/" --yes "@arnica-io/dependency-scan@1.0.33"
     displayName: Arnica dependency scan
 ```
 
@@ -285,7 +285,7 @@ pipelines:
         name: Arnica dependency scan
         script:
           - cd "$BITBUCKET_CLONE_DIR"
-          - npx --yes "@arnica-io/dependency-scan@1.0.32"
+          - npx --yes "@arnica-io/dependency-scan@1.0.33"
         artifacts:
           - arnica-scan-summary.md
           - .arnica-scan-outputs.env
@@ -359,7 +359,7 @@ Add to the same `script` or export env before `npx`:
           - export ARNICA_SCAN_PATH="services/payments"
           - export ARNICA_ON_FINDINGS="alert"
           - cd "$BITBUCKET_CLONE_DIR"
-          - npx --yes "@arnica-io/dependency-scan@1.0.32"
+          - npx --yes "@arnica-io/dependency-scan@1.0.33"
 ```
 
 ### Where to View Reports (Bitbucket)
@@ -406,7 +406,7 @@ dependency-scan:
   image: node:24
   script:
     - cd "${CI_PROJECT_DIR}"
-    - npx --yes "@arnica-io/dependency-scan@1.0.32"
+    - npx --yes "@arnica-io/dependency-scan@1.0.33"
   artifacts:
     paths:
       - arnica-scan-summary.md

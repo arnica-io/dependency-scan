@@ -6,7 +6,7 @@ pipelines:
         name: Arnica dependency scan
         script:
           - cd "$BITBUCKET_CLONE_DIR"
-          - npx --yes "@arnica-io/dependency-scan@1.0.32"
+          - npx --yes "@arnica-io/dependency-scan@1.0.33"
         artifacts:
           - arnica-scan-summary.md
           - .arnica-scan-outputs.env
@@ -20,4 +20,4 @@ pipelines:
         #   - export ARNICA_SCAN_PATH="services/payments"
         #   - export ARNICA_ON_FINDINGS="alert"
         #   - cd "$BITBUCKET_CLONE_DIR"
-        #   - npx --yes "@arnica-io/dependency-scan@1.0.32"
+        #   - npx --yes "@arnica-io/dependency-scan@1.0.33"
