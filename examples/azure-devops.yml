@@ -22,7 +22,7 @@ steps:
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)"
-      npx --yes "@arnica-io/dependency-scan@1.0.31"
+      npx --yes "@arnica-io/dependency-scan@1.0.32"
     displayName: Arnica dependency scan
     env:
       # Required: map the variable-group secret into the CLI env name.
