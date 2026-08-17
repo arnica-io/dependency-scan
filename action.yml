@@ -50,8 +50,50 @@ runs:
         node-version: "24"
 
     # Build and run from the action checkout so PRs and new tags work before the version exists on npm.
+    # pnpm/action-setup reads the CALLER package.json (GITHUB_WORKSPACE), not this action.
+    # Prefer caller packageManager when it is pnpm; otherwise fall back to this action's pin.
+    - name: Resolve pnpm version
+      id: pnpm-version
+      shell: bash
+      run: |
+        set -euo pipefail
+        ACTION_PATH="${{ github.action_path }}"
+        fallback="$(PKG_JSON="$ACTION_PATH/package.json" node -e '
+          const fs = require("fs");
+          const pkg = JSON.parse(fs.readFileSync(process.env.PKG_JSON, "utf8"));
+          const pm = typeof pkg.packageManager === "string" ? pkg.packageManager : "";
+          if (!pm.startsWith("pnpm@")) {
+            process.stderr.write("dependency-scan package.json is missing packageManager pnpm@\n");
+            process.exit(1);
+          }
+          process.stdout.write(pm.slice("pnpm@".length).split("+")[0]);
+        ')"
+
+        caller_pkg="${GITHUB_WORKSPACE:-}/package.json"
+        if [[ -f "$caller_pkg" ]]; then
+          caller_pm="$(PKG_JSON="$caller_pkg" node -e '
+            try {
+              const fs = require("fs");
+              const pkg = JSON.parse(fs.readFileSync(process.env.PKG_JSON, "utf8"));
+              process.stdout.write(typeof pkg.packageManager === "string" ? pkg.packageManager : "");
+            } catch {
+              process.stdout.write("");
+            }
+          ')"
+          if [[ "$caller_pm" == pnpm@* ]]; then
+            echo "Using caller packageManager ${caller_pm}"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+        fi
+
+        echo "No caller pnpm packageManager; falling back to ${fallback}"
+        echo "version=${fallback}" >> "$GITHUB_OUTPUT"
+
     - name: Install pnpm
       uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      with:
+        version: ${{ steps.pnpm-version.outputs.version }}
 
     - name: Run Arnica dependency scan
       id: arnica
