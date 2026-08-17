@@ -51,7 +51,7 @@ jobs:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
           repository-url: ${{ github.server_url }}/${{ github.repository }}
-          branch: ${{ github.head_ref | github.ref_name }} # Uses the PR source branch for pull requests, or the current branch for pushes
+          branch: ${{ github.head_ref || github.ref_name }} # Uses the PR source branch for pull requests, or the current branch for pushes
           scan-path: .
 
       - name: Print scan results
@@ -104,6 +104,7 @@ Security scan results appear in multiple locations:
 | `api-token`            |    No    |                             | Arnica API token; prefer secret env `ARNICA_API_TOKEN`                     |
 | `scan-timeout-seconds` |    No    | `900`                       | Timeout (seconds) to wait for scan completion                              |
 | `on-findings`          |    No    | `fail`                      | Behavior when findings are detected: fail, alert, or pass                  |
+| `debug`                |    No    | `false`                     | Enable verbose API response debug logs                                     |
 
 ### Outputs
 
@@ -230,7 +231,7 @@ Force npmjs for this step:
       cd "$(Build.SourcesDirectory)"
       npm config set registry "https://registry.npmjs.org/"
       npm config delete @arnica-io:registry || true
-      npx --registry "https://registry.npmjs.org/" --yes "@arnica-io/dependency-scan@1.0.28"
+      npx --registry "https://registry.npmjs.org/" --yes "@arnica-io/dependency-scan@1.0.32"
     displayName: Arnica dependency scan
 ```
 
@@ -266,7 +267,7 @@ Use the **published npm package** with `npx`, same as Azure DevOps.
 
 You can always override detection with `ARNICA_REPOSITORY_URL` and `ARNICA_BRANCH`.
 
-**Bitbucket Server URL shape:** Auto-derived URLs use `{BITBUCKET_SERVER_URL}/{BITBUCKET_SERVER_SCM_PREFIX}/{BITBUCKET_REPO_FULL_NAME}.git` with prefix defaulting to `scm` (common for Atlassian Bitbucket Server). Some installations use a different path segment (for example `git`); set `BITBUCKET_SERVER_SCM_PREFIX` to match yours. Project-key layouts, HTTP(S) proxies, or non-standard Git HTTP paths may still require setting `REPOSITORY_URL` explicitly.
+**Bitbucket Server URL shape:** Auto-derived URLs use `{BITBUCKET_SERVER_URL}/{BITBUCKET_SERVER_SCM_PREFIX}/{BITBUCKET_REPO_FULL_NAME}.git` with prefix defaulting to `scm` (common for Atlassian Bitbucket Server). Some installations use a different path segment (for example `git`); set `BITBUCKET_SERVER_SCM_PREFIX` to match yours. Project-key layouts, HTTP(S) proxies, or non-standard Git HTTP paths may still require setting `ARNICA_REPOSITORY_URL` explicitly.
 
 ### Prerequisites
 
@@ -284,7 +285,7 @@ pipelines:
         name: Arnica dependency scan
         script:
           - cd "$BITBUCKET_CLONE_DIR"
-          - npx --yes "@arnica-io/dependency-scan@1.0.30"
+          - npx --yes "@arnica-io/dependency-scan@1.0.32"
         artifacts:
           - arnica-scan-summary.md
           - .arnica-scan-outputs.env
@@ -358,7 +359,7 @@ Add to the same `script` or export env before `npx`:
           - export ARNICA_SCAN_PATH="services/payments"
           - export ARNICA_ON_FINDINGS="alert"
           - cd "$BITBUCKET_CLONE_DIR"
-          - npx --yes "@arnica-io/dependency-scan@1.0.30"
+          - npx --yes "@arnica-io/dependency-scan@1.0.32"
 ```
 
 ### Where to View Reports (Bitbucket)
@@ -405,7 +406,7 @@ dependency-scan:
   image: node:24
   script:
     - cd "${CI_PROJECT_DIR}"
-    - npx --yes "@arnica-io/dependency-scan@1.0.30"
+    - npx --yes "@arnica-io/dependency-scan@1.0.32"
   artifacts:
     paths:
       - arnica-scan-summary.md
