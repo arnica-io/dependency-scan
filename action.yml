@@ -50,8 +50,11 @@ runs:
         node-version: "24"
 
     # Build and run from the action checkout so PRs and new tags work before the version exists on npm.
+    # version is required for consumers without packageManager (pnpm/action-setup reads GITHUB_WORKSPACE).
     - name: Install pnpm
       uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      with:
+        version: 9.15.4
 
     - name: Run Arnica dependency scan
       id: arnica
