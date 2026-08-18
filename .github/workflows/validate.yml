@@ -36,6 +36,24 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Smoke test version check
+        run: |
+          node <<'EOF'
+          const { getUpdateLogMessage } = require("./dist/version-check");
+          (async () => {
+            const latest = (await (await fetch("https://registry.npmjs.org/@arnica-io/dependency-scan/latest")).json()).version;
+            if (!latest) {
+              process.exit(1);
+            }
+            const message = await getUpdateLogMessage({ actionRef: latest });
+            if (message) {
+              console.error(message);
+              process.exit(1);
+            }
+            console.log("up to date with " + latest);
+          })();
+          EOF
+
       - name: Test
         run: pnpm run test
 

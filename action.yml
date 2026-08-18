@@ -68,6 +68,7 @@ runs:
         INPUT_API_TOKEN: ${{ inputs.api-token }}
         INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
         INPUT_DEBUG: ${{ inputs.debug }}
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         ACTION_PATH="${{ github.action_path }}"
