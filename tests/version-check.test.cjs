@@ -98,8 +98,8 @@ test("getUpdateLogMessage logs when pinned SHA is not the latest release commit"
   );
 });
 
-test("getUpdateLogMessage uses ARNICA_ACTION_REF when no actionRef dep is passed", async () => {
-  process.env.ARNICA_ACTION_REF = "v1.0.32";
+test("getUpdateLogMessage uses GITHUB_ACTION_REF when no actionRef dep is passed", async () => {
+  process.env.GITHUB_ACTION_REF = "v1.0.32";
   try {
     const message = await getUpdateLogMessage({
       fetchFn: async () => jsonResponse({ version: "1.0.33" }),
@@ -109,7 +109,7 @@ test("getUpdateLogMessage uses ARNICA_ACTION_REF when no actionRef dep is passed
       "Update available: @arnica-io/dependency-scan@1.0.33 (current: 1.0.32)"
     );
   } finally {
-    delete process.env.ARNICA_ACTION_REF;
+    delete process.env.GITHUB_ACTION_REF;
   }
 });
 

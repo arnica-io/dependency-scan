@@ -68,7 +68,6 @@ runs:
         INPUT_API_TOKEN: ${{ inputs.api-token }}
         INPUT_ON_FINDINGS: ${{ inputs.on-findings }}
         INPUT_DEBUG: ${{ inputs.debug }}
-        ARNICA_ACTION_REF: ${{ github.action_ref }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail

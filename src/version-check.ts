@@ -80,7 +80,7 @@ function readInstalledVersion(): string | undefined {
 }
 
 function resolveCurrentVersion(deps: VersionCheckDeps): CurrentVersion {
-  const actionRef = deps.actionRef ?? process.env.ARNICA_ACTION_REF ?? process.env.GITHUB_ACTION_REF;
+  const actionRef = deps.actionRef ?? process.env.GITHUB_ACTION_REF;
   if (actionRef) {
     return classifyRef(actionRef);
   }
