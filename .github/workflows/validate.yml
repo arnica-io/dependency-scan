@@ -36,6 +36,9 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Smoke test version check
+        run: node tests/version-check.smoke.cjs
+
       - name: Test
         run: pnpm run test
 
