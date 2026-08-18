@@ -6,6 +6,7 @@ import { sleep } from "./utils";
 import { Sbom } from "./sbom";
 import { ApiErrorResponse, SbomApiClient, SbomScanResult } from "./api";
 import { SummaryWriter } from "./summary-writer";
+import { getUpdateLogMessage } from "./version-check";
 
 export type DependencyScanRunResult =
   | {
@@ -64,12 +65,16 @@ export class DependencyScanAction {
     });
   }
 
-  private logStartupPreflight(): void {
+  private async logStartupPreflight(): Promise<void> {
     this.platform.info(
       `Preflight: apiBaseUrl=${this.input.apiBaseUrl}, repositoryUrl=${this.input.repoUrl}, branch=${this.input.branch}, scanPath=${this.input.scanPath}, token=${
         this.input.apiToken ? "(present)" : "(empty)"
       }`
     );
+    const updateMessage = await getUpdateLogMessage();
+    if (updateMessage) {
+      this.platform.info(updateMessage);
+    }
   }
 
   private async generateSbom(): Promise<Sbom | undefined> {
@@ -130,7 +135,7 @@ export class DependencyScanAction {
 
   private async tryRun(): Promise<DependencyScanRunResult> {
     try {
-      this.logStartupPreflight();
+      await this.logStartupPreflight();
 
       /****** Generate SBOM ******/
       this.platform.info("Generating SBOM with cdxgen...");
