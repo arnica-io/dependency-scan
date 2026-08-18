@@ -37,7 +37,7 @@ jobs:
         run: pnpm run build
 
       - name: Smoke test version check
-        run: node tests/version-check.smoke.cjs
+        run: node -e "require('./dist/version-check').getUpdateLogMessage({actionRef:'0.0.1'}).then(m=>{if(!m)process.exit(1);console.log(m)})"
 
       - name: Test
         run: pnpm run test
